@@ -14,6 +14,8 @@
             IteratorProxy = new IteratorProxy(iterator);
         }
         IteratorProxy.Reset();
+
+        PokeAllSubscribers();
     }
 
     public void TaskDone(RangeUpdater updater, Range range) {

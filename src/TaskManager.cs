@@ -12,6 +12,7 @@ public class TaskManager : RangeUpdater, ISubscriber {
         _problem.Subscribe(this);
         Source = UpdateSource.Local;
     }
+
     public void Poke() {
         var updates = _problem.IteratorProxy.Updates;
         // take updates whose source is Sync
@@ -25,9 +26,14 @@ public class TaskManager : RangeUpdater, ISubscriber {
         foreach (var update in syncUpdates) {
             foreach (var task in _runningTasks.Keys) {
                 if (task.Range == update.Range) {
-                    TerminateTask(task);
+                    ReplaceTask(task);
                 }
             }
+        }
+
+        // schedule new tasks
+        while (_runningTasks.Count < MAX_TASKS) {
+            ScheduleTask();
         }
     }
 
@@ -46,13 +52,15 @@ public class TaskManager : RangeUpdater, ISubscriber {
     
     public void TaskFinished(EncryptionTask task, TaskResult result) {
         // make sure the problem hasn't changed since the task was started 
-        if (task.ProblemArgs != _problem.Args) {
-            return;
+        if (task.ProblemArgs == _problem.Args) {
+            _problem.TaskDone(this, result.Range);
         }
-        _problem.TaskDone(this, result.Range);
+
+        // replace the task with a new one
+        ReplaceTask(task);
     }
     
-    private void TerminateTask(EncryptionTask task) {
+    private void ReplaceTask(EncryptionTask task) {
         _cancellationTokens[task].Cancel();
 
         // wait for the task to finish
@@ -60,6 +68,9 @@ public class TaskManager : RangeUpdater, ISubscriber {
 
         _runningTasks.Remove(task);
         _cancellationTokens.Remove(task);
+
+        // schedule a new task to replace the terminated one
+        ScheduleTask();
     }
     
 }

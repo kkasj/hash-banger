@@ -31,5 +31,6 @@ public class EncryptionTask {
         }
         
         _manager.TaskFinished(this, new TaskResult(TaskStatus.NotFound, null, Range));
+        return;
     }
 }
