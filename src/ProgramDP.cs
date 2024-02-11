@@ -4,7 +4,7 @@ using design_patterns.Messaging;
 using design_patterns.Utils;
 
 public class PeerApp {
-    public static void Main(string[] args) {
+    public static void MainChuj(string[] args) {
 
         var app = new PeerApp();
         app.ParseArguments(args);
