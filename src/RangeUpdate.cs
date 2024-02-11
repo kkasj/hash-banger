@@ -1,3 +1,4 @@
+namespace peer2peer; 
 public class RangeUpdate {
     public UpdateType UpdateType { get; set; }
     public UpdateSource UpdateSource { get; set; }
