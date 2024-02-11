@@ -23,4 +23,9 @@ public class IteratorProxy
                 break;
         }
     }
+
+    public Range GetNext()
+    {
+        return Iterator.GetNext();
+    }   
 }
