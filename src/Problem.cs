@@ -2,7 +2,8 @@
 
 public class Problem : Observable {
     EncryptionType _type;
-    public IteratorProxy _iterator;
+    public IteratorProxy Iterator;
+    public ProblemArgs Args;
     
     public void GotNewProblem(ISubscriber subscriber) { //TODO:
         
@@ -11,13 +12,13 @@ public class Problem : Observable {
 
     public void TaskDone(RangeUpdater updater, Range range) {
         var rangeToUpdate = RangeUpdate(UpdateType.RangeDone, updater.Source, range);
-        _iterator.UpdateRange(rangeToUpdate);
+        Iterator.UpdateRange(rangeToUpdate);
         PokeAllSubscribers();
     }
     
     public void ReserveTask(RangeUpdater updater, Range range) {
         var rangeToUpdate = RangeUpdate(UpdateType.RangeReservation, updater.Source, range);
-        _iterator.UpdateRange(rangeToUpdate);
+        Iterator.UpdateRange(rangeToUpdate);
         PokeAllSubscribers();
     }
 }
