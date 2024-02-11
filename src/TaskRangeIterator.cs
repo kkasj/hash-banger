@@ -141,7 +141,7 @@ public class TaskRangeIterator
         }
 
         double percentage = (double)totalLength / (double)(DEFAULT_RANGE.End - DEFAULT_RANGE.Start);
-        Console.WriteLine("Percentage of ranges done: " + (double)((int)((1 - percentage)*10000))/100 + "%");
+        Console.WriteLine("Percentage of ranges done: " + ((1 - percentage)*100).ToString("F2") + "%");
         return reservedRange;
     }
 
