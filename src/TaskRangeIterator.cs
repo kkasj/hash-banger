@@ -30,7 +30,7 @@ public class ReservedRange : Range
 } 
 
 
-public class RangeSortedList : SortedList
+public class RangeSortedList : SortedList<int, Range>
 {
     public RangeSortedList() : base()
     {
@@ -39,6 +39,12 @@ public class RangeSortedList : SortedList
     public void Add(Range range)
     {
         base.Add(range.Start, range);
+    }
+
+    public void Add(int start, int end)
+    {
+        Range range = new Range(start, end);
+        base.Add(start, range);
     }
 
     public void Remove(Range range)
@@ -51,8 +57,8 @@ public class RangeSortedList : SortedList
     {
         get
         {
-            Range range = (Range)base.GetByIndex(index);
-            return range;
+            var key = this.Keys[index];
+            return base[key];
         }
     }
 }
@@ -98,6 +104,38 @@ public class TaskRangeIterator
         return reservedRange;
     }
 
+    public void MergeRanges()
+    {
+        // merge all ranges that are adjacent to each other
+
+        for (int i = 0; i < availableRanges.Count - 1; i++)
+        {
+            Range range1 = availableRanges[i];
+            Range range2 = availableRanges[i + 1];
+            if (range1.End + 1 == range2.Start)
+            {
+                availableRanges.RemoveAt(i);
+                availableRanges.RemoveAt(i);
+                availableRanges.Add(range1.Start, range2.End);
+                i--;
+            }
+        }
+        
+        for (int i = 0; i < reservedRanges.Count - 1; i++)
+        {
+            ReservedRange range1 = (ReservedRange)reservedRanges[i];
+            ReservedRange range2 = (ReservedRange)reservedRanges[i + 1];
+            if (range1.End + 1 == range2.Start && range1.ReservedAt == range2.ReservedAt)
+            {
+                ReservedRange newReservedRange = new ReservedRange(range1.Start, range2.End, range1.ReservedAt);
+                reservedRanges.RemoveAt(i);
+                reservedRanges.RemoveAt(i);
+                reservedRanges.Add(newReservedRange);
+                i--;
+            }
+        }
+    }
+
     public void ReserveRange(Range range)
     {
         // find the available range that contains the start of this range
@@ -137,6 +175,9 @@ public class TaskRangeIterator
                 DateTime reservedAt = DateTime.Now;
                 ReservedRange reservedRange = new ReservedRange(start, end, reservedAt);
                 reservedRanges.Add(reservedRange);
+
+
+                MergeRanges();
                 return;
             }
         }
@@ -176,7 +217,7 @@ public class TaskRangeIterator
 
         for (int i = 0; i < reservedRanges.Count; i++)
         {
-            Range reservedRange = reservedRanges[i];
+            ReservedRange reservedRange = (ReservedRange)reservedRanges[i];
             if (start >= reservedRange.Start && start <= reservedRange.End)
             {
                 if (start == reservedRange.Start && end == reservedRange.End)
@@ -186,21 +227,27 @@ public class TaskRangeIterator
                 else if (start == reservedRange.Start)
                 {
                     reservedRanges.RemoveAt(i);
-                    reservedRanges.Add(end + 1, reservedRange.End);
+                    ReservedRange newReservedRange = new ReservedRange(end + 1, reservedRange.End, reservedRange.ReservedAt);
+                    reservedRanges.Add(newReservedRange);
                 }
                 else if (end == reservedRange.End)
                 {
                     reservedRanges.RemoveAt(i);
-                    reservedRanges.Add(reservedRange.Start, start - 1);
+                    ReservedRange newReservedRange = new ReservedRange(reservedRange.Start, start - 1, reservedRange.ReservedAt);
+                    reservedRanges.Add(newReservedRange);
                 }
                 else
                 {
                     reservedRanges.RemoveAt(i);
-                    reservedRanges.Add(reservedRange.Start, start - 1);
-                    reservedRanges.Add(end + 1, reservedRange.End);
+                    ReservedRange newReservedRange1 = new ReservedRange(reservedRange.Start, start - 1, reservedRange.ReservedAt);
+                    reservedRanges.Add(newReservedRange1);
+                    ReservedRange newReservedRange2 = new ReservedRange(end + 1, reservedRange.End, reservedRange.ReservedAt);
+                    reservedRanges.Add(newReservedRange2);
                 }
 
                 availableRanges.Add(range);
+
+                MergeRanges();
                 return;
             }
         }
@@ -218,7 +265,7 @@ public class TaskRangeIterator
 
         for (int i = 0; i < reservedRanges.Count; i++)
         {
-            Range reservedRange = reservedRanges[i];
+            ReservedRange reservedRange = (ReservedRange)reservedRanges[i];
             if (start >= reservedRange.Start && start <= reservedRange.End)
             {
                 if (start == reservedRange.Start && end == reservedRange.End)
@@ -228,18 +275,22 @@ public class TaskRangeIterator
                 else if (start == reservedRange.Start)
                 {
                     reservedRanges.RemoveAt(i);
-                    reservedRanges.Add(end + 1, reservedRange.End);
+                    ReservedRange newReservedRange = new ReservedRange(end + 1, reservedRange.End, reservedRange.ReservedAt);
+                    reservedRanges.Add(newReservedRange);
                 }
                 else if (end == reservedRange.End)
                 {
                     reservedRanges.RemoveAt(i);
-                    reservedRanges.Add(reservedRange.Start, start - 1);
+                    ReservedRange newReservedRange = new ReservedRange(reservedRange.Start, start - 1, reservedRange.ReservedAt);
+                    reservedRanges.Add(newReservedRange);
                 }
                 else
                 {
                     reservedRanges.RemoveAt(i);
-                    reservedRanges.Add(reservedRange.Start, start - 1);
-                    reservedRanges.Add(end + 1, reservedRange.End);
+                    ReservedRange newReservedRange1 = new ReservedRange(reservedRange.Start, start - 1, reservedRange.ReservedAt);
+                    reservedRanges.Add(newReservedRange1);
+                    ReservedRange newReservedRange2 = new ReservedRange(end + 1, reservedRange.End, reservedRange.ReservedAt);
+                    reservedRanges.Add(newReservedRange2);
                 }
 
                 return;
