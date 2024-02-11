@@ -1,21 +1,35 @@
-﻿namespace peer2peer; 
+﻿using System;
+using System.Threading;
 
 public class EncryptionTask {
+    public Range Range;
+    public ProblemArgs ProblemArgs;
     private TaskManager _manager;
-    private Range _range;
     private IEncrypter _encrypter;
-    private string _problemHash;
 
-    public EncryptionTask(TaskManager manager, Range range, IEncrypter encrypter, string problemHash) {
+    public EncryptionTask(TaskManager manager, Range range, IEncrypter encrypter, ProblemArgs problemArgs) {
+        Range = range;
+        ProblemArgs = problemArgs;
         _manager = manager;
-        _range = range;
         _encrypter = encrypter;
-        _problemHash = problemHash;
     }
     
     public void Start() {
-        //TODO:
+        CancellationToken token = new CancellationToken();        
+
+        for(int i = Range.Start; i < Range.End; i++) {
+            // check for thread cancellation
+            if (token.IsCancellationRequested) {
+                return;
+            }
+            
+            string data = DataIndexer.FromIndex(i);
+            if (_encrypter.Encrypt(data) == ProblemArgs.ProblemHash) {
+                _manager.TaskFinished(this, new TaskResult(TaskStatus.Found, data, Range));
+                return;
+            }
+        }
         
-        _manager.TaskFinished(this, new TaskResult());
+        _manager.TaskFinished(this, new TaskResult(TaskStatus.NotFound, null, Range));
     }
 }

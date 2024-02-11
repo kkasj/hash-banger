@@ -28,4 +28,9 @@ public class IteratorProxy
     {
         return Iterator.GetNext();
     }   
+
+    public void Reset()
+    {
+        Iterator.Reset();
+    }
 }

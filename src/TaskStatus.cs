@@ -1,6 +1,4 @@
-﻿namespace peer2peer; 
-
-public enum TaskStatus {
+﻿public enum TaskStatus {
     Found,
     NotFound
 }

@@ -16,6 +16,17 @@ public class Range : IComparable<Range>
     {
         return Start.CompareTo(other.Start);
     }
+
+    public override bool Equals(object obj)
+    {
+        if (obj == null || GetType() != obj.GetType())
+        {
+            return false;
+        }
+
+        Range other = (Range)obj;
+        return Start == other.Start && End == other.End;
+    }
 }
 
 // ReservedRange is a subclass of Range that also includes reservation timestamp
@@ -26,6 +37,18 @@ public class ReservedRange : Range
     public ReservedRange(int start, int end, DateTime reservedAt) : base(start, end)
     {
         ReservedAt = reservedAt;
+    }
+
+
+    public override bool Equals(object obj)
+    {
+        if (obj == null || GetType() != obj.GetType())
+        {
+            return false;
+        }
+
+        ReservedRange other = (ReservedRange)obj;
+        return Start == other.Start && End == other.End && ReservedAt == other.ReservedAt;
     }
 } 
 

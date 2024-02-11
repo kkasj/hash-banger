@@ -1,6 +1,4 @@
-﻿namespace peer2peer; 
-
-public abstract class Observable {
+﻿public abstract class Observable {
     private List<ISubscriber> subscribers = new();
     
     public void Subscribe(ISubscriber subscriber) {
