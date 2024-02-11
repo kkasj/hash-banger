@@ -92,7 +92,7 @@ public class TaskRangeIterator
 {
     private RangeSortedList availableRanges;
     private RangeSortedList reservedRanges;
-    const int CHUNK_LENGTH = 10000;
+    const int CHUNK_LENGTH = 100000;
     // expiration datetime delta
     TimeSpan EXPIRATION_DELTA = new TimeSpan(0, 30, 0);
     Range DEFAULT_RANGE = new Range(1, 100000000);
@@ -117,14 +117,31 @@ public class TaskRangeIterator
             throw new Exception("No available ranges");
         }
 
-        Range availableRange = availableRanges[0];
+        // get random available range
+        Random random = new Random();
+        int index = random.Next(availableRanges.Count);
+        Range availableRange = availableRanges[index];
 
         // availableRange always has length of at least CHUNK_LENGTH
         DateTime reservedAt = DateTime.Now;
-        ReservedRange reservedRange = new ReservedRange(availableRange.Start, availableRange.Start + CHUNK_LENGTH - 1, reservedAt);
+
+        // reserve random chunk from the available range
+        random = new Random();
+        int nr_chunks = (int)(availableRange.End - availableRange.Start)/CHUNK_LENGTH;
+        int start_chunk = random.Next(0, nr_chunks);
+        ReservedRange reservedRange = new ReservedRange(availableRange.Start + start_chunk*CHUNK_LENGTH, availableRange.Start + (start_chunk+1)*CHUNK_LENGTH - 1, reservedAt);
         ReserveRange(reservedRange);
 
-        Console.WriteLine("!!! Reserved range: " + reservedRange.Start + " - " + reservedRange.End);
+        // iterate through all available ranges and sum up their length
+        int totalLength = 0;
+        for (int i = 0; i < availableRanges.Count; i++)
+        {
+            Range range = availableRanges[i];
+            totalLength += range.End - range.Start;
+        }
+
+        double percentage = (double)totalLength / (double)(DEFAULT_RANGE.End - DEFAULT_RANGE.Start);
+        Console.WriteLine("Percentage of ranges done: " + (double)((int)((1 - percentage)*10000))/100 + "%");
         return reservedRange;
     }
 
