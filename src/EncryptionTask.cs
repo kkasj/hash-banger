@@ -6,20 +6,20 @@ public class EncryptionTask {
     public ProblemArgs ProblemArgs;
     private TaskManager _manager;
     private IEncrypter _encrypter;
+    private CancellationToken _token;
 
-    public EncryptionTask(TaskManager manager, Range range, IEncrypter encrypter, ProblemArgs problemArgs) {
+    public EncryptionTask(TaskManager manager, Range range, IEncrypter encrypter, ProblemArgs problemArgs, CancellationToken token) {
         Range = range;
         ProblemArgs = problemArgs;
         _manager = manager;
         _encrypter = encrypter;
+        _token = token;
     }
     
     public void Start() {
-        CancellationToken token = new CancellationToken();        
-
         for(int i = Range.Start; i < Range.End; i++) {
             // check for thread cancellation
-            if (token.IsCancellationRequested) {
+            if (_token.IsCancellationRequested) {
                 return;
             }
             

@@ -2,10 +2,11 @@
 using System.Threading;
 
 public class TaskManager : RangeUpdater, ISubscriber {
+    private readonly object _lock = new object();
     private Dictionary<EncryptionTask, Thread> _runningTasks = new Dictionary<EncryptionTask, Thread>();
     private Dictionary<EncryptionTask, CancellationTokenSource> _cancellationTokens = new Dictionary<EncryptionTask, CancellationTokenSource>();
     private Problem _problem;
-    const int MAX_TASKS = 10;
+    const int MAX_TASKS = 20;
     
     public TaskManager(Problem problem) {
         _problem = problem;
@@ -39,28 +40,44 @@ public class TaskManager : RangeUpdater, ISubscriber {
 
     private void ScheduleTask() {
         Range pickedRange = _problem.IteratorProxy.GetNext();
-        EncryptionTask task = new EncryptionTask(this, pickedRange, EncrypterFactory.CreateEncrypter(_problem.Args.EncryptionType), _problem.Args);
+        CancellationTokenSource cts = new CancellationTokenSource();
+        EncryptionTask task = new EncryptionTask(this, pickedRange, EncrypterFactory.CreateEncrypter(_problem.Args.EncryptionType), _problem.Args, cts.Token);
         Thread InstanceCaller = new Thread(
             new ThreadStart(task.Start));
         _runningTasks.Add(task, InstanceCaller);
 
-        CancellationTokenSource cts = new CancellationTokenSource();
         _cancellationTokens.Add(task, cts);
 
-        _runningTasks[task].Start(cts.Token);
+        _runningTasks[task].Start();
+        // Console.WriteLine("Task started: " + pickedRange.Start + " - " + pickedRange.End);
     }
     
     public void TaskFinished(EncryptionTask task, TaskResult result) {
-        // make sure the problem hasn't changed since the task was started 
-        if (task.ProblemArgs == _problem.Args) {
-            _problem.TaskDone(this, result.Range);
-        }
+        lock(_lock){
+            // make sure the problem hasn't changed since the task was started 
+            if (task.ProblemArgs == _problem.Args) {
+                _problem.TaskDone(this, result.Range);
+                if (result.Status == TaskStatus.Found) {
+                    Console.WriteLine("Found: " + result.Result);
+                    CancelAllTasks();
+                    // quit the program
+                    Environment.Exit(0);
+                }
+            }
 
-        // replace the task with a new one
-        ReplaceTask(task);
+            // replace the task with a new one
+            // ReplaceTask(task);
+            _runningTasks.Remove(task);
+            _cancellationTokens.Remove(task);
+            ScheduleTask();
+
+
+            // Console.WriteLine("Task finished: " + result.Range.Start + " - " + result.Range.End);
+        }
     }
     
     private void ReplaceTask(EncryptionTask task) {
+        // Console.WriteLine("Task replaced: " + task.Range.Start + " - " + task.Range.End);
         _cancellationTokens[task].Cancel();
 
         // wait for the task to finish
@@ -73,4 +90,10 @@ public class TaskManager : RangeUpdater, ISubscriber {
         ScheduleTask();
     }
     
+    private void CancelAllTasks() {
+        foreach (var task in _runningTasks.Keys) {
+            _cancellationTokens[task].Cancel();
+            _runningTasks[task].Join();
+        }
+    }
 }

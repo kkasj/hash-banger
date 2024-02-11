@@ -92,10 +92,10 @@ public class TaskRangeIterator
 {
     private RangeSortedList availableRanges;
     private RangeSortedList reservedRanges;
-    const int CHUNK_LENGTH = 10;
+    const int CHUNK_LENGTH = 10000;
     // expiration datetime delta
     TimeSpan EXPIRATION_DELTA = new TimeSpan(0, 30, 0);
-    Range DEFAULT_RANGE = new Range(1, 100);
+    Range DEFAULT_RANGE = new Range(1, 100000000);
 
     public TaskRangeIterator()
     {
@@ -124,6 +124,7 @@ public class TaskRangeIterator
         ReservedRange reservedRange = new ReservedRange(availableRange.Start, availableRange.Start + CHUNK_LENGTH - 1, reservedAt);
         ReserveRange(reservedRange);
 
+        Console.WriteLine("!!! Reserved range: " + reservedRange.Start + " - " + reservedRange.End);
         return reservedRange;
     }
 
@@ -200,7 +201,7 @@ public class TaskRangeIterator
                 reservedRanges.Add(reservedRange);
 
 
-                MergeRanges();
+                // MergeRanges();
                 return;
             }
         }
@@ -216,14 +217,21 @@ public class TaskRangeIterator
             return;
         }
 
+        List<ReservedRange> toRemove = new List<ReservedRange>();
+
         DateTime now = DateTime.Now;
         for (int i = 0; i < reservedRanges.Count; i++)
         {
             ReservedRange reservedRange = (ReservedRange)reservedRanges[i];
             if (now - reservedRange.ReservedAt > EXPIRATION_DELTA)
             {
-                FreeReservedRange(reservedRange);
+                toRemove.Add(reservedRange);
             }
+        }
+
+        foreach (ReservedRange reservedRange in toRemove)
+        {
+            FreeReservedRange(reservedRange);
         }
     }
 
@@ -270,7 +278,7 @@ public class TaskRangeIterator
 
                 availableRanges.Add(range);
 
-                MergeRanges();
+                // MergeRanges();
                 return;
             }
         }
@@ -315,7 +323,8 @@ public class TaskRangeIterator
                     ReservedRange newReservedRange2 = new ReservedRange(end + 1, reservedRange.End, reservedRange.ReservedAt);
                     reservedRanges.Add(newReservedRange2);
                 }
-
+                
+                // MergeRanges();
                 return;
             }
         }

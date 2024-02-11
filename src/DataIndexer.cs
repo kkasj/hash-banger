@@ -1,6 +1,6 @@
 public class DataIndexer
 {
-    const int DATA_LENGTH = 4;
+    const int DATA_LENGTH = 6;
 
     public static string FromIndex(int index)
     {
