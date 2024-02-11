@@ -1,3 +1,6 @@
+/// <summary>
+/// Represents a range update.
+/// </summary>
 public class RangeUpdate {
     public UpdateType UpdateType { get; set; }
     public UpdateSource UpdateSource { get; set; }

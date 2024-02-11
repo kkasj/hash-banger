@@ -1,3 +1,6 @@
+/// <summary>
+/// This class is a proxy for the TaskRangeIterator class. It is used to keep track of the updates made to the iterator and to apply them to the iterator when needed.
+/// </summary>
 public class IteratorProxy
 {
     public TaskRangeIterator Iterator { get; set; }
@@ -9,6 +12,12 @@ public class IteratorProxy
         Updates = new List<RangeUpdate>();
     }
 
+    /// <summary>
+    /// Updates the iterator with the given range update.
+    /// </summary>
+    /// <param name="rangeUpdate">
+    /// The range update to apply to the iterator.
+    /// </param>
     public void UpdateRange(RangeUpdate rangeUpdate)
     {
         Updates.Append(rangeUpdate);
@@ -24,11 +33,18 @@ public class IteratorProxy
         }
     }
 
+    /// <summary>
+    /// Gets the next range from the iterator.
+    /// </summary>
+    /// <returns></returns>
     public Range GetNext()
     {
         return Iterator.GetNext();
     }   
 
+    /// <summary>
+    /// Resets the iterator state.
+    /// </summary>
     public void Reset()
     {
         Iterator.Reset();

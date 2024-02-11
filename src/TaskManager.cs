@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Threading;
+using design_patterns.Utils;
 
+/// <summary>
+/// TaskManager is responsible for scheduling and managing tasks.
+/// </summary>
 public class TaskManager : RangeUpdater, ISubscriber {
     private readonly object _lock = new object();
     private Dictionary<EncryptionTask, Thread> _runningTasks = new Dictionary<EncryptionTask, Thread>();
     private Dictionary<EncryptionTask, CancellationTokenSource> _cancellationTokens = new Dictionary<EncryptionTask, CancellationTokenSource>();
     private Problem _problem;
-    const int MAX_TASKS = 20;
     
     public TaskManager(Problem problem) {
         _problem = problem;
@@ -33,11 +36,14 @@ public class TaskManager : RangeUpdater, ISubscriber {
         }
 
         // schedule new tasks
-        while (_runningTasks.Count < MAX_TASKS) {
+        while (_runningTasks.Count < ProblemParameters.MAX_TASKS) {
             ScheduleTask();
         }
     }
 
+    /// <summary>
+    /// Schedules a new task to be executed.
+    /// </summary>
     private void ScheduleTask() {
         Range pickedRange = _problem.IteratorProxy.GetNext();
         CancellationTokenSource cts = new CancellationTokenSource();
@@ -52,6 +58,11 @@ public class TaskManager : RangeUpdater, ISubscriber {
         // Console.WriteLine("Task started: " + pickedRange.Start + " - " + pickedRange.End);
     }
     
+    /// <summary>
+    /// Called when a task has finished.
+    /// </summary>
+    /// <param name="task"></param>
+    /// <param name="result"></param>
     public void TaskFinished(EncryptionTask task, TaskResult result) {
         lock(_lock){
             // make sure the problem hasn't changed since the task was started 
@@ -76,6 +87,10 @@ public class TaskManager : RangeUpdater, ISubscriber {
         }
     }
     
+    /// <summary>
+    /// Replaces a task with a new one.
+    /// </summary>
+    /// <param name="task"></param>
     private void ReplaceTask(EncryptionTask task) {
         // Console.WriteLine("Task replaced: " + task.Range.Start + " - " + task.Range.End);
         _cancellationTokens[task].Cancel();
@@ -90,6 +105,9 @@ public class TaskManager : RangeUpdater, ISubscriber {
         ScheduleTask();
     }
     
+    /// <summary>
+    /// Cancels all running tasks.
+    /// </summary>
     private void CancelAllTasks() {
         foreach (var task in _runningTasks.Keys) {
             _cancellationTokens[task].Cancel();

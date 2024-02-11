@@ -1,6 +1,10 @@
 using System;
 using System.Collections;
+using design_patterns.Utils;
 
+/// <summary>
+/// Range is a class that is used to store a range of numbers
+/// </summary>
 public class Range : IComparable<Range>
 {
     public int Start { get; set; }
@@ -29,7 +33,10 @@ public class Range : IComparable<Range>
     }
 }
 
-// ReservedRange is a subclass of Range that also includes reservation timestamp
+/// <summary>
+/// ReservedRange is a class that is used to store a range that has been reserved
+/// and the time at which it was reserved
+/// </summary>
 public class ReservedRange : Range
 {
     public DateTime ReservedAt { get; set; }
@@ -53,6 +60,9 @@ public class ReservedRange : Range
 } 
 
 
+/// <summary>
+/// RangeSortedList is a class that is used to store ranges and sort them by their start value
+/// </summary>
 public class RangeSortedList : SortedList<int, Range>
 {
     public RangeSortedList() : base()
@@ -88,14 +98,14 @@ public class RangeSortedList : SortedList<int, Range>
 
 
 
+/// <summary>
+/// TaskRangeIterator is a class that is used to iterate through a range of numbers
+/// and reserve a chunk of numbers for a certain amount of time
+/// </summary>
 public class TaskRangeIterator
 {
     private RangeSortedList availableRanges;
     private RangeSortedList reservedRanges;
-    const int CHUNK_LENGTH = 100000;
-    // expiration datetime delta
-    TimeSpan EXPIRATION_DELTA = new TimeSpan(0, 30, 0);
-    Range DEFAULT_RANGE = new Range(1, 100000000);
 
     public TaskRangeIterator()
     {
@@ -104,6 +114,12 @@ public class TaskRangeIterator
         Reset();
     }
 
+    /// <summary>
+    /// GetNext returns a random range from the available ranges
+    /// </summary>
+    /// <returns>
+    /// A ReservedRange object
+    /// </returns>
     public ReservedRange GetNext()
     {
         // free all reserved ranges that have expired
@@ -127,9 +143,9 @@ public class TaskRangeIterator
 
         // reserve random chunk from the available range
         random = new Random();
-        int nr_chunks = (int)(availableRange.End - availableRange.Start)/CHUNK_LENGTH;
+        int nr_chunks = (int)(availableRange.End - availableRange.Start)/ProblemParameters.CHUNK_LENGTH;
         int start_chunk = random.Next(0, nr_chunks);
-        ReservedRange reservedRange = new ReservedRange(availableRange.Start + start_chunk*CHUNK_LENGTH, availableRange.Start + (start_chunk+1)*CHUNK_LENGTH - 1, reservedAt);
+        ReservedRange reservedRange = new ReservedRange(availableRange.Start + start_chunk*ProblemParameters.CHUNK_LENGTH, availableRange.Start + (start_chunk+1)*ProblemParameters.CHUNK_LENGTH - 1, reservedAt);
         ReserveRange(reservedRange);
 
         // iterate through all available ranges and sum up their length
@@ -140,11 +156,14 @@ public class TaskRangeIterator
             totalLength += range.End - range.Start;
         }
 
-        double percentage = (double)totalLength / (double)(DEFAULT_RANGE.End - DEFAULT_RANGE.Start);
-        Console.WriteLine("Percentage of ranges done: " + ((1 - percentage)*100).ToString("F2") + "%");
+        double percentage = (double)totalLength / (double)(ProblemParameters.DEFAULT_RANGE.End - ProblemParameters.DEFAULT_RANGE.Start);
+        Console.WriteLine("Percentage of all combinations tried: " + ((1 - percentage)*100).ToString("F2") + "%");
         return reservedRange;
     }
 
+    /// <summary>
+    /// MergeRanges merges all ranges that are adjacent to each other in order to save memory
+    /// </summary>
     public void MergeRanges()
     {
         // merge all ranges that are adjacent to each other
@@ -177,6 +196,12 @@ public class TaskRangeIterator
         }
     }
 
+    /// <summary>
+    /// ReserveRange reserves a range of numbers for a certain amount of time
+    /// </summary>
+    /// <param name="range">
+    /// A Range object
+    /// </param>
     public void ReserveRange(Range range)
     {
         // find the available range that contains the start of this range
@@ -218,12 +243,15 @@ public class TaskRangeIterator
                 reservedRanges.Add(reservedRange);
 
 
-                // MergeRanges();
+                MergeRanges();
                 return;
             }
         }
     }
 
+    /// <summary>
+    /// FreeExpiredReservedRanges frees all reserved ranges that have expired
+    /// </summary>
     public void FreeExpiredReservedRanges()
     {
         // free all reserved ranges that have expired
@@ -240,7 +268,7 @@ public class TaskRangeIterator
         for (int i = 0; i < reservedRanges.Count; i++)
         {
             ReservedRange reservedRange = (ReservedRange)reservedRanges[i];
-            if (now - reservedRange.ReservedAt > EXPIRATION_DELTA)
+            if (now - reservedRange.ReservedAt > ProblemParameters.EXPIRATION_DELTA)
             {
                 toRemove.Add(reservedRange);
             }
@@ -252,6 +280,9 @@ public class TaskRangeIterator
         }
     }
 
+    /// <summary>
+    /// FreeReservedRange frees a reserved range and adds it to the available ranges
+    /// </summary>
     public void FreeReservedRange(Range range)
     {
         // find the reserved range that contains the start of this range
@@ -295,12 +326,15 @@ public class TaskRangeIterator
 
                 availableRanges.Add(range);
 
-                // MergeRanges();
+                MergeRanges();
                 return;
             }
         }
     }
 
+    /// <summary>
+    /// RemoveReservedRange removes a reserved range when it was successfully processed
+    /// </summary>
     public void RemoveReservedRange(Range range)
     {
         // find the reserved range that contains the start of this range
@@ -341,17 +375,20 @@ public class TaskRangeIterator
                     reservedRanges.Add(newReservedRange2);
                 }
                 
-                // MergeRanges();
+                MergeRanges();
                 return;
             }
         }
     }
 
+    /// <summary>
+    /// Reset resets the iterator state
+    /// </summary>
     public void Reset()
     {
         availableRanges.Clear();
         reservedRanges.Clear();
-        availableRanges.Add(DEFAULT_RANGE);
+        availableRanges.Add(ProblemParameters.DEFAULT_RANGE);
     }
 
     public void PrintState()

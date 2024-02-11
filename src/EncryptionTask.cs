@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Threading;
 
+/// <summary>
+/// Represents a task that is responsible for encrypting data and comparing it to a given hash.
+/// </summary>
 public class EncryptionTask {
     public Range Range;
     public ProblemArgs ProblemArgs;
@@ -16,6 +19,9 @@ public class EncryptionTask {
         _token = token;
     }
     
+    /// <summary>
+    /// Starts the task.
+    /// </summary>
     public void Start() {
         for(int i = Range.Start; i < Range.End; i++) {
             // check for thread cancellation
