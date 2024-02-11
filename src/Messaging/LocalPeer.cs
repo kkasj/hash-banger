@@ -75,6 +75,10 @@ public class LocalPeer {
         outgoingMessage.Write(JsonSerializer.Serialize(msg));
         _peer.SendMessage(outgoingMessage, receiver, NetDeliveryMethod.ReliableOrdered);
     }
+    
+    public Message CreateMessage(MessageType type, string content) {
+        return new Message(type, content);
+    }
 
     public void NodeConnected(NewNodeConnectedArgs args) {
         var ip = args.Socket.Split(":")[0];
