@@ -14,7 +14,7 @@ public class LocalPeer {
     
     // private List<NetConnection> _connections = new List<NetConnection>();
 
-    public delegate void MessageReceivedEventHandler(string message);
+    public delegate void MessageReceivedEventHandler(string message, NetConnection sender);
     public event MessageReceivedEventHandler MessageReceived;
 
     public LocalPeer() {
@@ -37,7 +37,7 @@ public class LocalPeer {
                 switch (msg.MessageType) {
                     case NetIncomingMessageType.Data:
                         Console.WriteLine($"Received data from {msg.SenderConnection}.");
-                        MessageReceived?.Invoke(msg.ReadString());
+                        MessageReceived?.Invoke(msg.ReadString(), msg.SenderConnection);
                         break;
 
                     case NetIncomingMessageType.StatusChanged:

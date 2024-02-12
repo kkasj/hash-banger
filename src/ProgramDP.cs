@@ -9,8 +9,15 @@ public class PeerApp {
         var app = new PeerApp();
         app.ParseArguments(args);
 
+        TaskRangeIterator iterator = new TaskRangeIterator();
+        IteratorProxy iteratorProxy = new IteratorProxy(iterator);
+        var encrypter = EncrypterFactory.CreateEncrypter(EncryptionType.SHA1); 
+        string problemHash = encrypter.Encrypt(ProblemParameters.PASSWORD);
+        Problem problem = new Problem(iteratorProxy, new ProblemArgs(problemHash, EncryptionType.SHA1));
+        TaskManager taskManager = new TaskManager(problem);
+
         var peer = new LocalPeer();
-        // var messageHandler = new MessageHandler(peer);
+        var messageHandler = new MessageHandler(peer, problem);
         
         peer.Register();
 
