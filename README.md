@@ -8,5 +8,5 @@
 2. Make sure you have acces to docfx command line tool
 
 ### Steps
-1. docfx D:\Fork\peer2peer\docfx.json --serve
+1. docfx docfx.json --serve
 2. Open the browser and navigate to http://localhost:8080
