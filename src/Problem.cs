@@ -50,4 +50,11 @@ public class Problem : Observable {
         IteratorProxy.UpdateRange(rangeToUpdate);
         PokeAllSubscribers();
     }
+
+    public void ProblemSolved(string result) {
+        Args.IsDone = true;
+        Args.Result = result;
+        Console.WriteLine("Found: " + result);
+        PokeAllSubscribers();
+    }
 }

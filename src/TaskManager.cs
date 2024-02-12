@@ -18,6 +18,10 @@ public class TaskManager : RangeUpdater, ISubscriber {
     }
 
     public void Poke() {
+        if(_problem.Args.IsDone) {
+            CancelAllTasks();
+            return;
+        }
         var updates = _problem.IteratorProxy.Updates;
         // take updates whose source is Sync
         var syncUpdates = updates.Where(update => update.UpdateSource == UpdateSource.Sync);
@@ -69,10 +73,7 @@ public class TaskManager : RangeUpdater, ISubscriber {
             if (task.ProblemArgs == _problem.Args) {
                 _problem.TaskDone(this, result.Range);
                 if (result.Status == TaskStatus.Found) {
-                    Console.WriteLine("Found: " + result.Result);
                     CancelAllTasks();
-                    // quit the program
-                    Environment.Exit(0);
                 }
             }
 
