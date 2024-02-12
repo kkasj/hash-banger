@@ -17,7 +17,7 @@
     }
   ],
   "build": {
-    "template": [ "default" ],
+    "template": [ "default", "modern" ],
     "globalMetadata": {
       "_appTitle": "HashBreaker Documentation",
       "_appFooter": "I was generated automatically",
