@@ -7,16 +7,16 @@ using System.Threading;
 public class EncryptionTask {
     public Range Range;
     public ProblemArgs ProblemArgs;
+    public CancellationToken Token;
     private TaskManager _manager;
     private IEncrypter _encrypter;
-    private CancellationToken _token;
 
     public EncryptionTask(TaskManager manager, Range range, IEncrypter encrypter, ProblemArgs problemArgs, CancellationToken token) {
         Range = range;
         ProblemArgs = problemArgs;
+        Token = token;
         _manager = manager;
         _encrypter = encrypter;
-        _token = token;
     }
     
     /// <summary>
@@ -25,7 +25,7 @@ public class EncryptionTask {
     public void Start() {
         for(int i = Range.Start; i < Range.End; i++) {
             // check for thread cancellation
-            if (_token.IsCancellationRequested) {
+            if (Token.IsCancellationRequested) {
                 return;
             }
             

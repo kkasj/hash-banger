@@ -7,11 +7,11 @@ public static class Settings {
 }
 
 public static class ProblemParameters {
-    public static int DATA_LENGTH = 6;
-    public static int CHUNK_LENGTH = 100000;
-    // expiration datetime delta
     public static TimeSpan EXPIRATION_DELTA = new TimeSpan(0, 30, 0);
-    public static Range DEFAULT_RANGE = new Range(1, 100000000);
     public static int MAX_TASKS = 20;
-    public static string PASSWORD = "hashha";
+    public static string PASSWORD = "hashh";
+    public static int DATA_LENGTH = PASSWORD.Length;
+    public static Range DEFAULT_RANGE = new Range(DataIndexer.ToIndex(new string('a', DATA_LENGTH)), DataIndexer.ToIndex(new string('z', DATA_LENGTH)));
+    // public static int CHUNK_LENGTH = 456976; // = 26^4, must be a divisor of DEFAULT_RANGE (so a power of 26)
+    public static int CHUNK_LENGTH = 17576; // = 26^3, must be a divisor of DEFAULT_RANGE (so a power of 26)
 }

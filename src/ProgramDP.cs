@@ -10,7 +10,7 @@ public class PeerApp {
         app.ParseArguments(args);
 
         var peer = new LocalPeer();
-        var messageHandler = new MessageHandler(peer);
+        // var messageHandler = new MessageHandler(peer);
         
         peer.Register();
 

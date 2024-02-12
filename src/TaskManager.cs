@@ -69,20 +69,23 @@ public class TaskManager : RangeUpdater, ISubscriber {
     /// <param name="result"></param>
     public void TaskFinished(EncryptionTask task, TaskResult result) {
         lock(_lock){
+            // check for cancellation in case it was requested during lock acquisition wait  
+            if (task.Token.IsCancellationRequested) {
+                return;
+            }
+
             // make sure the problem hasn't changed since the task was started 
             if (task.ProblemArgs == _problem.Args) {
                 _problem.TaskDone(this, result.Range);
                 if (result.Status == TaskStatus.Found) {
                     CancelAllTasks();
+                    _problem.ProblemSolved(result.Result);
+                    return;
                 }
             }
 
             // replace the task with a new one
-            // ReplaceTask(task);
-            _runningTasks.Remove(task);
-            _cancellationTokens.Remove(task);
-            ScheduleTask();
-
+            ReplaceTask(task);
 
             // Console.WriteLine("Task finished: " + result.Range.Start + " - " + result.Range.End);
         }
@@ -93,11 +96,7 @@ public class TaskManager : RangeUpdater, ISubscriber {
     /// </summary>
     /// <param name="task"></param>
     private void ReplaceTask(EncryptionTask task) {
-        // Console.WriteLine("Task replaced: " + task.Range.Start + " - " + task.Range.End);
         _cancellationTokens[task].Cancel();
-
-        // wait for the task to finish
-        _runningTasks[task].Join();
 
         _runningTasks.Remove(task);
         _cancellationTokens.Remove(task);
@@ -112,7 +111,6 @@ public class TaskManager : RangeUpdater, ISubscriber {
     private void CancelAllTasks() {
         foreach (var task in _runningTasks.Keys) {
             _cancellationTokens[task].Cancel();
-            _runningTasks[task].Join();
         }
     }
 }

@@ -14,8 +14,8 @@ public class MessageHandler : RangeUpdater, ISubscriber {
         _localPeer = localPeer;
         _localPeer.MessageReceived += HandleMessage;
     }
-    public void Poke() {
 
+    public void Poke() {
         if (_problem.Args.IsDone) {
             var endMessage = new Message(MessageType.ProblemSolved, _problem.Args.Result);
             _localPeer.BroadcastMessage(endMessage);
@@ -61,8 +61,8 @@ public class MessageHandler : RangeUpdater, ISubscriber {
                 _localPeer.NodesReceived(JsonSerializer.Deserialize<NodesReceivedArgs>(msg.Content));
                 break;
             case MessageType.NewProblem:
-                ProblemArgs newProblemArgs = JsonSerializer.Deserialize<ProblemArgs>(newMessage);
-                _problem.GotNewProblem(newProblemArgs.ProblemHash, newProblemArgs.EncryptionType);
+                NewProblemArgs newProblemArgs = JsonSerializer.Deserialize<NewProblemArgs>(newMessage);
+                _problem.GotNewProblem(newProblemArgs);
                 //TODO: handle iterator
                 break;
             case MessageType.CancelProblem:
