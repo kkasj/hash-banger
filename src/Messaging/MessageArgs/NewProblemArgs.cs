@@ -1,4 +1,4 @@
-﻿namespace design_patterns.Messaging.MessageArgs; 
+﻿// namespace design_patterns.Messaging.MessageArgs; 
 
 public class NewProblemArgs {
     public string ProblemHash { get; private set; }

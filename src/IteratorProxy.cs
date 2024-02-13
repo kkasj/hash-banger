@@ -1,15 +1,18 @@
+using System.Collections.Concurrent;
+
 /// <summary>
 /// This class is a proxy for the TaskRangeIterator class. It is used to keep track of the updates made to the iterator and to apply them to the iterator when needed.
 /// </summary>
 public class IteratorProxy
 {
     public TaskRangeIterator Iterator { get; set; }
-    public List<RangeUpdate> Updates { get; set; }
+    private object _lock = new object();
+    public ConcurrentBag<RangeUpdate> Updates;
 
     public IteratorProxy(TaskRangeIterator iterator)
     {
         Iterator = iterator;
-        Updates = new List<RangeUpdate>();
+        Updates = new ConcurrentBag<RangeUpdate>();
     }
 
     /// <summary>
@@ -20,7 +23,7 @@ public class IteratorProxy
     /// </param>
     public void UpdateRange(RangeUpdate rangeUpdate)
     {
-        Updates.Append(rangeUpdate);
+        Updates.Add(rangeUpdate);
 
         switch (rangeUpdate.UpdateType)
         {
@@ -37,7 +40,7 @@ public class IteratorProxy
     /// Gets the next range from the iterator.
     /// </summary>
     /// <returns></returns>
-    public Range GetNext()
+    public ReservedRange GetNext()
     {
         return Iterator.GetNext();
     }   
@@ -45,8 +48,16 @@ public class IteratorProxy
     /// <summary>
     /// Resets the iterator state.
     /// </summary>
-    public void Reset()
+    public void Reset(TaskRangeIterator? iterator = null)
     {
-        Iterator.Reset();
+        Updates = new ConcurrentBag<RangeUpdate>();
+        if (iterator != null)
+        {
+            Iterator = iterator;
+        }
+        else
+        {
+            Iterator.Reset();
+        }
     }
 }

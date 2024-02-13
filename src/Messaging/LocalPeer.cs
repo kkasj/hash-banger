@@ -16,18 +16,23 @@ public class LocalPeer {
 
     public delegate void MessageReceivedEventHandler(string message, NetConnection sender);
     public event MessageReceivedEventHandler MessageReceived;
+    public delegate void NodeConnectedEventHandler(NetConnection connection);
+    public event NodeConnectedEventHandler OnNewNodeConnected;
 
     public LocalPeer() {
         var config = new NetPeerConfiguration("super-hackers") {
             Port = Settings.Port,
             AcceptIncomingConnections = true,
-            EnableUPnP = true
+            EnableUPnP = false,
+            SendBufferSize = 64 * 1024, // Increase as needed
+            ReceiveBufferSize = 64 * 1024, // Increase as needed
         };
         _peer = new NetPeer(config);
         _peer.Start();
         Console.WriteLine($"Peer started on port {_peer.Port}");
         var netThread = new Thread(new ThreadStart(ProcessNet));
         netThread.Start();
+        Register();
     }
 
     private void ProcessNet() {
@@ -36,15 +41,19 @@ public class LocalPeer {
             while (_peer.ReadMessage() is { } msg) {
                 switch (msg.MessageType) {
                     case NetIncomingMessageType.Data:
-                        Console.WriteLine($"Received data from {msg.SenderConnection}.");
+                        // Console.WriteLine($"Received data from {msg.SenderConnection}.");
                         MessageReceived?.Invoke(msg.ReadString(), msg.SenderConnection);
                         break;
 
                     case NetIncomingMessageType.StatusChanged:
                         Console.WriteLine($"Status {msg.SenderConnection} changed: {msg.SenderConnection.Status}");
+                        if (msg.SenderConnection.Status == NetConnectionStatus.Connected && msg.SenderConnection.RemoteEndPoint.Port != 42069) {
+                            OnNewNodeConnected?.Invoke(msg.SenderConnection);
+                        }     
+                    
                         break;
                     default:
-                        Console.WriteLine("Unhandled type: " + msg.MessageType);
+                        Console.WriteLine("Unhandled type: " + msg.MessageType + " content: " + msg.ReadString());
                         break;
                 }
 
@@ -56,13 +65,14 @@ public class LocalPeer {
     }
 
     public void Register() {
-        _peer.Connect("127.0.0.1", 42069);
+        Console.WriteLine("Registering...");
+        _peer.Connect("localhost", 42069);
     }
 
     public void BroadcastMessage(Message msg) {
         foreach (var connection in _peer.Connections) {
-            if (connection == _peer.Connections[0]) {
-                return;
+            if (connection.RemoteEndPoint.Port == 42069) {
+                continue;
             }
             NetOutgoingMessage outgoingMessage = _peer.CreateMessage();
             outgoingMessage.Write(JsonSerializer.Serialize(msg));

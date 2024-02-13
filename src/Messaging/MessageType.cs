@@ -10,6 +10,7 @@ public enum MessageType {
     NewProblem,
     CancelProblem,
     ProblemSolved,
-    RangeStarted,
+    ProblemDiscovery,
+    RangeReserved,
     RangeCompleted,
 }

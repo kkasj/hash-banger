@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using design_patterns.Utils;
+using System.Collections.Concurrent;
 
 /// <summary>
 /// TaskManager is responsible for scheduling and managing tasks.
@@ -18,16 +19,18 @@ public class TaskManager : RangeUpdater, ISubscriber {
     }
 
     public void Poke() {
-        if(_problem.Args.IsDone) {
+        if(_problem.Args is not null && _problem.Args.IsDone) {
             CancelAllTasks();
             return;
         }
-        var updates = _problem.IteratorProxy.Updates;
+        var rangeUpdates = _problem.IteratorProxy.Updates;
+
         // take updates whose source is Sync
-        var syncUpdates = updates.Where(update => update.UpdateSource == UpdateSource.Sync);
+        var syncUpdates = rangeUpdates.Where(update => update.UpdateSource == UpdateSource.Sync);
         // delete them from the original list
-        if (syncUpdates.Count() > 0)
-            _problem.IteratorProxy.Updates = updates.Except(syncUpdates).ToList();
+        if (syncUpdates.Count() > 0){
+            _problem.IteratorProxy.Updates = new ConcurrentBag<RangeUpdate>(rangeUpdates.Except(syncUpdates));
+        }
 
         // search for conflicts with running tasks 
         // and resolve them by terminating the task
@@ -49,7 +52,7 @@ public class TaskManager : RangeUpdater, ISubscriber {
     /// Schedules a new task to be executed.
     /// </summary>
     private void ScheduleTask() {
-        Range pickedRange = _problem.IteratorProxy.GetNext();
+        ReservedRange pickedRange = _problem.IteratorProxy.GetNext();
         CancellationTokenSource cts = new CancellationTokenSource();
         EncryptionTask task = new EncryptionTask(this, pickedRange, EncrypterFactory.CreateEncrypter(_problem.Args.EncryptionType), _problem.Args, cts.Token);
         Thread InstanceCaller = new Thread(
@@ -60,6 +63,7 @@ public class TaskManager : RangeUpdater, ISubscriber {
 
         _runningTasks[task].Start();
         // Console.WriteLine("Task started: " + pickedRange.Start + " - " + pickedRange.End);
+        _problem.ReserveTask(this, pickedRange);
     }
     
     /// <summary>

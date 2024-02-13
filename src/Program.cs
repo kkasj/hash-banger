@@ -5,7 +5,7 @@ using design_patterns.Utils;
 
 class Program
 {
-    static void Main(string[] args)
+    static void MainA(string[] args)
     {
         TaskRangeIterator iterator = new TaskRangeIterator();
         IteratorProxy iteratorProxy = new IteratorProxy(iterator);

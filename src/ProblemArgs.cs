@@ -10,4 +10,13 @@ public class ProblemArgs {
         IsDone = false;
         Result = "";
     }
+
+    // equality
+    public override bool Equals(object? obj) {
+        if (obj == null || GetType() != obj.GetType()) {
+            return false;
+        }
+        ProblemArgs other = (ProblemArgs)obj;
+        return ProblemHash == other.ProblemHash && EncryptionType == other.EncryptionType;
+    }
 }
