@@ -7,7 +7,7 @@ _layout: landing
 ## Hardware Architecture Diagram
 System is a network of interconnected worker nodes, that exchange information about current status of a problem and work that has to be done in order to solve it.
 To establish a connection between nodes, central server is used which itself is not a part of problem communication.
-![Diagram fizyczny](./resources/diagram_fizyczny.jpg)
+![Diagram fizyczny](./diagram_fizyczny.jpg)
 ## Logic Architecture - Class Diagram
 
 Main parts of the solutions are:
