@@ -27,8 +27,7 @@
       {
         "files": [
           "toc.yml",
-          "index.md",
-          "diagram_fizyczny.jpg"
+          "index.md"
         ]
       },
       {
@@ -45,6 +44,13 @@
           "*.md"
         ],
         "dest": "home"
+      }
+    ],
+    "resource": [
+      {
+        "files": ["resources/**"],
+        "src": ".",
+        "dest": "dest/resources"
       }
     ],
     "overwrite": [

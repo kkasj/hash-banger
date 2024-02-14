@@ -7,7 +7,8 @@ _layout: landing
 ## Hardware Architecture Diagram
 System is a network of interconnected worker nodes, that exchange information about current status of a problem and work that has to be done in order to solve it.
 To establish a connection between nodes, central server is used which itself is not a part of problem communication.
-![Diagram fizyczny](./diagram_fizyczny.jpg)
+
+![Diagram fizyczny](./resources/diagram_fizyczny.jpg)
 ## Logic Architecture - Class Diagram
 
 Main parts of the solutions are:
@@ -24,7 +25,7 @@ It is responsible for managing the problem - it keeps all done and reserved rang
 
 
 #### Thread Management and Encryption
-This part is resposnible for actually solving the problem.
+This part is responsible for actually solving the problem.
 It takes possible unchecked combination and schedule threads task to try them.
 
 At the end it notifies Problem part about the progress
