@@ -16,7 +16,7 @@ Main parts of the solutions are:
     - Network communication
 
 #### Problem
-Problem contains actual state of finish, and it's last yet unhandled changes.
+Problem contains actual state of finish, and stores the updates made by other peers, as well as the peer itself.
 
 It is responsible for managing the problem - it keeps all done and reserved ranges of solution. Anyone can access problem to get it.
 
@@ -46,41 +46,40 @@ classDiagram
         +string Encrypt(string data)
     }
     class EncryptionTask{
-        +Range Range
+        +TaskRange Range
         +ProblemArgs ProblemArgs
         +CancellationToken Token
         -TaskManager _manager
         -IEncrypter _encrypter
 
-        +EncryptionTask(TaskManager manager, Range range, IEncrypter encrypter, ProblemArgs, problemArgs, CancellationToken token)
+        +EncryptionTask(TaskManager manager, TaskRange range, IEncrypter encrypter, ProblemArgs, problemArgs, CancellationToken token)
         +void Start()
     }
-    class ISubscriber{
-        +abstract void Poke()
-    }
-    class IteratorProxy{
-        +TaskRangeIterator Iterator
-        +List<RangeUpdate> Updates
+    class Subscriber{
+        #Problem problem
+        #ProblemUpdateVisitor visitor
 
-        +IteratorProxy(TaskRangeIterator iterator)
-        +void UpdateRange(RangeUpdate rangeUpdate)
-        +Range GetNext()
-        +void Reset()
+        +void Poke()
     }
+    <<abstract>> Subscriber
     class Observable{
-        -List<ISubscriber> subscribers
-        +void Subscribe(ISubscriber subscriber)
+        -List<Subscriber> subscribers
+        +void Subscribe(Subscriber subscriber)
         +void PokeAllSubscribers()
     }
+    <<abstract>> Observable
     class Problem{
-        +IteratorProxy IteratorProxy
-        +ProblemArgs Args
+        +ConcurrentDictionary<ProblemUpdate, byte> Updates
+        +ProblemArgs? Args
+        +TaskRangeIterator Iterator
 
-        +Problem(IteratorProxy IteratorProxy, ProblemArgs args)
-        +void GotNewProblem(NewProblemArgs newProblemArgs)
-        +void TaskDone(RangeUpdater updater, Range range)
-        +void ReserveTask(RangeUpdater updater, Range range)
-        +void ProblemSolved(string result)
+        +Problem(TaskRangeIterator iterator)
+        +void Update(ProblemUpdate problemUpdate)
+        +TaskRange GetNewRange(object? source)
+        +void GotNewProblem(object? source, NewProblemArgs newProblemArgs)
+        +void ReserveRange(object? source, TaskRange range)
+        +void ProblemSolved(object? source, string result)
+        +void RangeDone(object? source, TaskRange range)
     }
     class ProblemArgs{
         +string ProblemHash
@@ -90,36 +89,71 @@ classDiagram
 
         +ProblemArgs(string problemHash, EncryptionType encryptionType)
     }
-    class RangeUpdate{
-        +UpdateType UpdateType
-        +UpdateSource UpdateSource
-        +Range range
+    class ProblemUpdate{
+        +object? Source
+        +ConcurrentDictionary<object, byte> Acknowledgements
 
-        +RangeUpdate(UpdateType updateType, UpdateSource updateSource)
+        +abstract void Accept(ProblemUpdateVisitor visitor)
+        +bool Acknowledge(object obj)
     }
-    class RangeUpdater{
-        +UpdateSource Source
+    <<abstract>> ProblemUpdate
+    class ProblemUpdateVisitor{
+        +void Visit(RangeReservationUpdate update)
+        +void Visit(RangeDoneUpdate update)
+        +void Visit(NewRangeCollectionUpdate update)
+        +void Visit(NewProblemUpdate update)
+        +void Visit(ProblemSolvedUpdate update)
     }
-    <<abstract>> RangeUpdater
+    <<interface>> ProblemUpdateVisitor
+    class MessageHandlerProblemUpdateVisitor{
+        -MessageHandler _messageHandler
+
+        +MessageHandlerProblemUpdateVisitor(MessageHandler messageHandler)
+        +void Visit(RangeReservationUpdate update)
+        +void Visit(RangeDoneUpdate update)
+        +void Visit(NewRangeCollectionUpdate update)
+        +void Visit(NewProblemUpdate update)
+        +void Visit(ProblemSolvedUpdate update)
+    }
+    class TaskManagerProblemUpdateVisitor{
+        -TaskManager _taskManager
+
+        +TaskManagerProblemUpdateVisitor(TaskManager taskManager)
+        +void Visit(RangeReservationUpdate update)
+        +void Visit(RangeDoneUpdate update)
+        +void Visit(NewRangeCollectionUpdate update)
+        +void Visit(NewProblemUpdate update)
+        +void Visit(ProblemSolvedUpdate update)
+    }
+    class CollectionManagerProblemUpdateVisitor{
+        -TaskRangeCollectionManager _collectionManager
+
+        +CollectionManagerProblemUpdateVisitor(TaskRangeCollectionManager collectionManager)
+        +void Visit(RangeReservationUpdate update)
+        +void Visit(RangeDoneUpdate update)
+        +void Visit(NewRangeCollectionUpdate update)
+        +void Visit(NewProblemUpdate update)
+        +void Visit(ProblemSolvedUpdate update)
+    }
     class TaskManager{
         -readonly object _lock
         -Dictionary<EncryptionTask, Thread> _runningTasks
         -Dictionary<EncryptionTask, CancellationTokenSource> _cancellationTokens
-        -Problem _problem
 
         +TaskManager(Problem problem)
-        +void Poke()
         +void ScheduleTask()
-        +void TaskFinished(EncryptionTask task, TaskResult result)
         -void ReplaceTask(EncryptionTask task)
-        -void CancelAllTasks()
+        +void TaskDone(EncryptionTask task, TaskResult result)
+        +void CancelAllTasks()
+        +void ReplaceConflictingTasks(TaskRange range)
+        +void StartTasks()
     }
-    class Range{
+    class TaskRange{
         +int Start
         +int End
 
-        +Range(int start, int end)
-        +int CompareTo(Range other)
+        +TaskRange(int start, int end)
+        +int CompareTo(TaskRange other)
         +bool Equals(object obj)
     }
     class ReservedRange{
@@ -130,54 +164,64 @@ classDiagram
     }
     class RangeSortedList{
         +RangeSortedList()
-        +void Add(Range range)
+        +void Add(TaskRange range)
         +void Add(int start, int end)
-        +void Remove(Range range)
-        +Range this(int index)
+        +void Remove(TaskRange range)
+        +TaskRange this(int index)
     }
     class TaskRangeIterator{
-        -RangeSortedList availableRanges
-        -RangeSortedList reservedRanges
+        +TaskRangeCollection TaskRangeCollection
 
-        +TaskRangeIterator()
-        +ReservedRange GetNext()
+        +TaskRange GetNext()
+    }
+    <<abstract>> TaskRangeIterator
+    class RandomTaskRangeIterator{
+        +TaskRangeCollection TaskRangeCollection
+
+        +RandomTaskRangeIterator(TaskRangeCollection taskRangeCollection)
+        +TaskRange GetNext()
+    }
+    class TaskRangeCollection{
+        +RangeSortedList AvailableRanges
+        +RangeSortedList ReservedRanges
+        +List<TaskRange> SerializableAvailableRanges
+        +List<ReservedRange> SerializableReservedRanges
+
+        +TaskRangeCollection()
         +void MergeRanges()
-        +void ReserveRange(Range range)
+        +void ReserveRange(TaskRange range)
         +void FreeExpiredReservedRanges()
-        +void FreeReservedRange(Range range)
-        +void RemoveReservedRange(Range range)
+        +void FreeReservedRange(TaskRange range)
+        +void RemoveReservedRange(TaskRange range)
         +void Reset()
-        +void PrintState()
+    }
+    class TaskRangeCollectionManager{
+        +TaskRangeCollection RangeCollection
+
+        +TaskRangeCollectionManager(Problem problem, TaskRangeCollection rangeCollection)
+        +void ReserveRange(TaskRange range)
+        +void RemoveReservedRange(TaskRange range)
+        +void Reset()
     }
     class TaskResult{
         +TaskStatus Status
         +string? Result
-        +Range Range
+        +TaskRange Range
 
-        +TaskResult(TaskStatus status, string? result, Range range)
+        +TaskResult(TaskStatus status, string? result, TaskRange range)
     }
     class TaskStatus{
         Found
         NotFound
     }
     <<enum>> TaskStatus
-    class UpdateType{
-        RangeReservation
-        RangeDone
-    }
-    <<enum>> UpdateType
-    class UpdateSource{
-        Local
-        Sync
-    }
-    <<enum>> UpdateSource
     class EncryptionType{
         SHA1
     }
     <<enum>> EncryptionType
     class LocalPeer{
         -readonly NetPeer _peer
-        +delegate void MessageReceivedEventHandler(string message, NetConnection sender)
+        +delegate void MessageReceivedEventHandler(string message)
         +event MessageReceivedEventHandler MessageReceived
 
         -void ProcessNet
@@ -210,12 +254,14 @@ classDiagram
     <<enum>> MessageType
     class MessageHandler{
         -readonly LocalPeer _localPeer
-        -Problem _problem
-        +UpdateSource Source
         
         +MessageHandler(LocalPeer localPeer, Problem problem)
-        +void Poke()
         -void HandleMessage(string newMessage)
+        +void BroadcastResult(string result)
+        +void BroadcastRangeDone(TaskRange range)
+        +void BroadcastRangeReservation(TaskRange range)
+        +void BroadcastNewProblem()
+        +void SendProblemToNewNode(NetConnection connection)
         +static Message Deserialize(string message)
         +static string Serialize(Message message)
     }
@@ -228,9 +274,9 @@ classDiagram
     class NewProblemArgs{
         +string ProblemHash
         +EncryptionType EncryptionType
-        +TaskRangeIterator? Iterator
+        +TaskRangeCollection? RangeCollection
 
-        +NewProblemArgs(string problemHash, EncryptionType encryptionType, TaskRangeIterator? iterator)
+        +NewProblemArgs(string problemHash, EncryptionType encryptionType, TaskRangeCollection? rangeCollection)
     }
     class NodeDisconnectedArgs{
         +string Socket
@@ -245,31 +291,88 @@ classDiagram
     class ProblemSolvedArgs
     class RangeCompletedArgs
     class RangeStartedArgs
+    class Settings{
+        +const int DefaultPort
+        +static int Port
+    }
+    class ProblemParameters{
+        +static TimeSpan EXPIRATION_DELTA
+        +static int MAX_TASKS
+        +static string PASSWORD
+        +static int DATA_LENGTH
+        +static TaskRange DEFAULT_RANGE
+        +static int CHUNK_LENGTH
 
+        +static void UpdatePassword(string newPassword)
+    }
     
-    
 
-    Range <|-- IComparable
-    ReservedRange <|-- Range
-    RangeSortedList <|-- SortedList
-    SHA1Encrypter ..|> IEncrypter
-    EncryptionTask <|-- TaskManager
-    Problem <|-- IteratorProxy
-    IteratorProxy <|-- TaskRangeIterator
-    MessageHandler --> Problem: Subscribe
-    TaskManager --> Problem: Subscribe
-    Peer <|-- MessageHandler
-    MessageHandler <|.. ISubscriber
-    MessageHandler <|.. RangeUpdater
-    TaskManager <|.. ISubscriber
-    TaskManager <|.. RangeUpdater
-    Problem <|.. Observable
-
-    IEncrypter ..|> SHA1Encrypter
-    EncrypterFactory <.. EncryptionType
+    IEncrypter <|.. SHA1Encrypter
+    EncrypterFactory ..> EncryptionType
     EncrypterFactory --> IEncrypter
-    IEncrypter *-- EncryptionTask
 
+    EncryptionTask --> TaskRange
+    EncryptionTask --> ProblemArgs
+    EncryptionTask --> TaskManager
+    EncryptionTask --> IEncrypter
+
+    MessageHandler <|-- Subscriber
+    TaskManager <|-- Subscriber
+    TaskRangeCollctionManager <|-- Subscriber
+
+    Subscriber --> Problem
+    Subscriber --> ProblemUpdateVisitor
+
+    Problem <|-- Observable
+    
+    Observable --> Subscriber
+
+    Problem --> ProblemUpdate
+    Problem --> TaskRangeIterator
+    Problem --> ProblemArgs
+
+    ProblemArgs --> EncryptionType
+
+    MessageHandlerProblemUpdateVisitor ..|> ProblemUpdateVisitor
+    MessageHandlerProblemUpdateVisitor --> MessageHandler
+    TaskManagerProblemUpdateVisitor ..|> ProblemUpdateVisitor
+    TaskManagerProblemUpdateVisitor --> TaskManager
+    CollectionManagerProblemUpdateVisitor ..|> ProblemUpdateVisitor
+    CollectionManagerProblemUpdateVisitor --> TaskRangeCollectionManager
+
+    TaskManager --> EncryptionTask
+    TaskManager --> TaskRange
+
+    ReservedRange <|-- TaskRange
+
+    RangeSortedList o-- TaskRange
+
+    TaskRangeIterator --> TaskRangeCollection
+
+    RandomTaskRangeIterator <|-- TaskRangeIterator
+
+    TaskRangeCollection --> RangeSortedList
+
+    TaskRangeCollectionManager --> TaskRangeCollection
+
+    TaskResult --> TaskRange
+    TaskResult --> TaskStatus
+
+    LocalPeer --> Message
+
+    Message --> MessageType
+
+    MessageHandler --> LocalPeer
+    MessageHandler --> Problem
+
+    Message --> CancelProblemArgs
+    Message --> NewNodeConnectedArgs
+    Message --> NewProblemArgs
+    Message --> NodeDisconnectedArgs
+    Message --> NodesReceivedArgs
+    Message --> ProblemSolvedArgs
+    Message --> RangeCompletedArgs
+    Message --> RangeStartedArgs
     
 ```
 ## Used Design Patterns
@@ -286,59 +389,80 @@ Thanks to this solution we can easily add runtime statistics system or GUI.
 classDiagram
 
     class Problem{
-        +IteratorProxy IteratorProxy
-        +ProblemArgs Args
+        +ConcurrentDictionary<ProblemUpdate, byte> Updates
+        +ProblemArgs? Args
+        +TaskRangeIterator Iterator
 
-        +Problem(IteratorProxy IteratorProxy, ProblemArgs args)
-        +void GotNewProblem(NewProblemArgs newProblemArgs)
-        +void TaskDone(RangeUpdater updater, Range range)
-        +void ReserveTask(RangeUpdater updater, Range range)
-        +void ProblemSolved(string result)
+        +Problem(TaskRangeIterator iterator)
+        +void Update(ProblemUpdate problemUpdate)
+        +TaskRange GetNewRange(object? source)
+        +void GotNewProblem(object? source, NewProblemArgs newProblemArgs)
+        +void ReserveRange(object? source, TaskRange range)
+        +void ProblemSolved(object? source, string result)
+        +void RangeDone(object? source, TaskRange range)
     }
 
     class MessageHandler{
         -readonly LocalPeer _localPeer
-        -Problem _problem
-        +UpdateSource Source
         
         +MessageHandler(LocalPeer localPeer, Problem problem)
-        +void Poke()
         -void HandleMessage(string newMessage)
+        +void BroadcastResult(string result)
+        +void BroadcastRangeDone(TaskRange range)
+        +void BroadcastRangeReservation(TaskRange range)
+        +void BroadcastNewProblem()
+        +void SendProblemToNewNode(NetConnection connection)
         +static Message Deserialize(string message)
         +static string Serialize(Message message)
     }
 
     class Observable{
-        -List<ISubscriber> subscribers
-        +void Subscribe(ISubscriber subscriber)
+        -List<Subscriber> subscribers
+        +void Subscribe(Subscriber subscriber)
         +void PokeAllSubscribers()
     }
+    <<abstract>> Observable
 
-    class ISubscriber{
-        +abstract void Poke()
+    class Subscriber{
+        #Problem problem
+        #ProblemUpdateVisitor visitor
+
+        +void Poke()
     }
+    <<abstract>> Subscriber
     
     class TaskManager{
         -readonly object _lock
         -Dictionary<EncryptionTask, Thread> _runningTasks
         -Dictionary<EncryptionTask, CancellationTokenSource> _cancellationTokens
-        -Problem _problem
 
         +TaskManager(Problem problem)
-        +void Poke()
         +void ScheduleTask()
-        +void TaskFinished(EncryptionTask task, TaskResult result)
         -void ReplaceTask(EncryptionTask task)
-        -void CancelAllTasks()
+        +void TaskDone(EncryptionTask task, TaskResult result)
+        +void CancelAllTasks()
+        +void ReplaceConflictingTasks(TaskRange range)
+        +void StartTasks()
     }
 
-    MessageHandler <|.. ISubscriber
-    MessageHandler <|.. RangeUpdater
-    TaskManager <|.. RangeUpdater
-    MessageHandler --> Problem: Subscribe
-    TaskManager --> Problem: Subscribe
-    Problem <|.. Observable
-    TaskManager <|.. ISubscriber
+    class TaskRangeCollectionManager{
+        +TaskRangeCollection RangeCollection
+
+        +TaskRangeCollectionManager(Problem problem, TaskRangeCollection rangeCollection)
+        +void ReserveRange(TaskRange range)
+        +void RemoveReservedRange(TaskRange range)
+        +void Reset()
+    }
+
+    Problem <|-- Observable
+
+    MessageHandler --> Problem: Subscribes
+    TaskManager --> Problem: Subscribes
+    TaskRangeCollectionManager --> Problem: Subscribes
+
+    MessageHandler <|-- Subscriber
+    TaskManager <|-- Subscriber
+    TaskRangeCollectionManager <|-- Subscriber
 
 ```
 
@@ -371,8 +495,8 @@ classDiagram
         +void Start()
     }
 
-    IEncrypter *-- EncryptionTask
-    IEncrypter ..|> SHA1Encrypter
+    IEncrypter <-- EncryptionTask
+    IEncrypter <|.. SHA1Encrypter
 
 ```
 
@@ -407,7 +531,94 @@ classDiagram
 
 ```
 
+### Iterator Pattern
+Our solution uses iterator pattern to manage the ranges of tasks. It allows to easily iterate over the ranges of tasks.
 
+The elasticity of the iterator pattern allows to easily implement new types of iterators, for example random iterator or more complex ones, leveraging probability distributions over the most likely password combinations.
+
+```mermaid
+classDiagram
+    class TaskRangeIterator{
+        +TaskRangeCollection TaskRangeCollection
+
+        +TaskRange GetNext()
+    }
+
+    <<abstract>> TaskRangeIterator
+    class RandomTaskRangeIterator{
+        +TaskRangeCollection TaskRangeCollection
+
+        +RandomTaskRangeIterator(TaskRangeCollection taskRangeCollection)
+        +TaskRange GetNext()
+    }
+
+    TaskRangeIterator <|-- RandomTaskRangeIterator
+    TaskRangeIterator --> TaskRangeCollection
+
+```
+
+### Visitor Pattern
+The implementation of the visitor pattern was motivated by the need to separate the problem update handling logic from the problem update class itself. This allows for easy extension of the problem update handling logic, as well as for easy testing of the problem update handling logic.
+
+```mermaid
+classDiagram
+    class ProblemUpdate{
+        +object? Source
+        +ConcurrentDictionary<object, byte> Acknowledgements
+
+        +abstract void Accept(ProblemUpdateVisitor visitor)
+        +bool Acknowledge(object obj)
+    }
+
+    <<abstract>> ProblemUpdate
+    class ProblemUpdateVisitor{
+        +void Visit(RangeReservationUpdate update)
+        +void Visit(RangeDoneUpdate update)
+        +void Visit(NewRangeCollectionUpdate update)
+        +void Visit(NewProblemUpdate update)
+        +void Visit(ProblemSolvedUpdate update)
+    }
+
+    <<interface>> ProblemUpdateVisitor
+    class MessageHandlerProblemUpdateVisitor{
+        -MessageHandler _messageHandler
+
+        +MessageHandlerProblemUpdateVisitor(MessageHandler messageHandler)
+        +void Visit(RangeReservationUpdate update)
+        +void Visit(RangeDoneUpdate update)
+        +void Visit(NewRangeCollectionUpdate update)
+        +void Visit(NewProblemUpdate update)
+        +void Visit(ProblemSolvedUpdate update)
+    }
+
+    class TaskManagerProblemUpdateVisitor{
+        -TaskManager _taskManager
+
+        +TaskManagerProblemUpdateVisitor(TaskManager taskManager)
+        +void Visit(RangeReservationUpdate update)
+        +void Visit(RangeDoneUpdate update)
+        +void Visit(NewRangeCollectionUpdate update)
+        +void Visit(NewProblemUpdate update)
+        +void Visit(ProblemSolvedUpdate update)
+    }
+
+    class CollectionManagerProblemUpdateVisitor{
+        -TaskRangeCollectionManager _collectionManager
+
+        +CollectionManagerProblemUpdateVisitor(TaskRangeCollectionManager collectionManager)
+        +void Visit(RangeReservationUpdate update)
+        +void Visit(RangeDoneUpdate update)
+        +void Visit(NewRangeCollectionUpdate update)
+        +void Visit(NewProblemUpdate update)
+        +void Visit(ProblemSolvedUpdate update)
+    }
+
+    ProblemUpdate --> ProblemUpdateVisitor
+
+    MessageHandlerProblemUpdateVisitor ..|> ProblemUpdateVisitor
+    TaskManagerProblemUpdateVisitor ..|> ProblemUpdateVisitor
+    CollectionManagerProblemUpdateVisitor ..|> ProblemUpdateVisitor
+```
 
 
 

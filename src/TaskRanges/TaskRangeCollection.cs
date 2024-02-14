@@ -47,52 +47,6 @@ public class TaskRangeCollection
     }
 
     /// <summary>
-    /// GetNext returns a random range from the available ranges
-    /// </summary>
-    /// <returns>
-    /// A ReservedRange object
-    /// </returns>
-    public ReservedRange GetNext()
-    {
-        // free all reserved ranges that have expired
-        FreeExpiredReservedRanges();
-
-        // if there are no available ranges, throw an exception
-        // otherwise, get the first available range
-
-        if (AvailableRanges.Count == 0)
-        {
-            throw new Exception("No available ranges");
-        }
-
-        // get random available range
-        Random random = new Random();
-        int index = random.Next(AvailableRanges.Count);
-        TaskRange availableRange = AvailableRanges[index];
-
-        // availableRange always has length of at least CHUNK_LENGTH
-        DateTime reservedAt = DateTime.Now;
-
-        // reserve random chunk from the available range
-        random = new Random();
-        int nr_chunks = (int)(availableRange.End - availableRange.Start)/ProblemParameters.CHUNK_LENGTH;
-        int start_chunk = random.Next(0, nr_chunks);
-        ReservedRange reservedRange = new ReservedRange(availableRange.Start + start_chunk*ProblemParameters.CHUNK_LENGTH, availableRange.Start + (start_chunk+1)*ProblemParameters.CHUNK_LENGTH - 1, reservedAt);
-
-        // iterate through all available ranges and sum up their length
-        int totalLength = 0;
-        for (int i = 0; i < AvailableRanges.Count; i++)
-        {
-            TaskRange range = AvailableRanges[i];
-            totalLength += range.End - range.Start;
-        }
-
-        double percentage = (double)totalLength / (double)(ProblemParameters.DEFAULT_RANGE.End - ProblemParameters.DEFAULT_RANGE.Start);
-        Console.WriteLine("Percentage of all combinations tried: " + ((1 - percentage)*100).ToString("F2") + "%");
-        return reservedRange;
-    }
-
-    /// <summary>
     /// MergeRanges merges all ranges that are adjacent to each other in order to save memory
     /// </summary>
     public void MergeRanges()
