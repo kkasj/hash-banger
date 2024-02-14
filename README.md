@@ -8,7 +8,7 @@
 ## Generating documentation
 
 ### Requirements 
-1. Install mermaid extension in vscode
+1. Install mermaid extension in Visual Studio Code
 2. Make sure you have access to docfx command line tool
 
 ### Steps
