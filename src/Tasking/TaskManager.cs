@@ -84,6 +84,10 @@ public class TaskManager : Subscriber {
         }
     }
 
+    /// <summary>
+    /// Replaces tasks that conflict with a given range.
+    /// </summary>
+    /// <param name="range"></param>
     public void ReplaceConflictingTasks(TaskRange range) {
         foreach (var task in runningTasks.Keys) {
             if (task.Range == range) {
@@ -92,6 +96,9 @@ public class TaskManager : Subscriber {
         }
     }
 
+    /// <summary>
+    /// Starts tasks until the maximum number of tasks is reached.
+    /// </summary>
     public void StartTasks() {
         while (runningTasks.Count < ProblemParameters.MAX_TASKS) {
             ScheduleTask();

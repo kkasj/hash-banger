@@ -5,8 +5,7 @@ using design_patterns.Utils;
 namespace design_patterns.TaskRanges;
 
 /// <summary>
-/// TaskRangeIterator is a class that is used to iterate through a range of numbers
-/// and reserve a chunk of numbers for a certain amount of time
+/// TaskRangeCollection represents a collection of available and reserved ranges.
 /// </summary>
 public class TaskRangeCollection
 {

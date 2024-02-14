@@ -4,6 +4,9 @@ using design_patterns.Tasking;
 
 namespace design_patterns.ProblemManagement;
 
+/// <summary>
+/// Represents a problem update visitor.
+/// </summary>
 public interface ProblemUpdateVisitor
 {
     public void Visit(RangeReservationUpdate update);
@@ -14,7 +17,9 @@ public interface ProblemUpdateVisitor
 }
     
 
-
+/// <summary>
+/// Implements the visitor for MessageHandler.
+/// </summary>
 public class MessageHandlerProblemUpdateVisitor : ProblemUpdateVisitor
 {
     private MessageHandler _messageHandler;
@@ -39,7 +44,9 @@ public class MessageHandlerProblemUpdateVisitor : ProblemUpdateVisitor
     }
 }
     
-
+/// <summary>
+/// Implements the visitor for TaskManager.
+/// </summary>
 public class TaskManagerProblemUpdateVisitor : ProblemUpdateVisitor
 {
     private TaskManager _taskManager;
@@ -66,7 +73,9 @@ public class TaskManagerProblemUpdateVisitor : ProblemUpdateVisitor
     }
 }
     
-
+/// <summary>
+/// Implements the visitor for TaskRangeCollectionManager.
+/// </summary>
 public class CollectionManagerProblemUpdateVisitor : ProblemUpdateVisitor
 {
     private TaskRangeCollectionManager _collectionManager;

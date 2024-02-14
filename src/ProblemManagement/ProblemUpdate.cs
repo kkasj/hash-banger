@@ -7,6 +7,9 @@ using design_patterns.Tasking;
 
 namespace design_patterns.ProblemManagement;
 
+/// <summary>
+/// Represents a problem update.
+/// </summary>
 public abstract class ProblemUpdate
 {
     public object? Source { get; set; }
@@ -15,7 +18,18 @@ public abstract class ProblemUpdate
     public ProblemUpdate(){
         Acknowledgements = new ConcurrentDictionary<object, byte>();
     }
+
+    /// <summary>
+    /// Accepts a visitor.
+    /// </summary>
+    /// <param name="visitor"></param>
     public abstract void Accept(ProblemUpdateVisitor visitor);
+
+    /// <summary>
+    /// Acknowledges the update, returns true if the update has already been acknowledged.
+    /// </summary>
+    /// <param name="obj"></param>
+    /// <returns></returns>
     public bool Acknowledge(object obj){
         if (Acknowledgements.ContainsKey(obj)){
             return true;

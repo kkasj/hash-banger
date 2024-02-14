@@ -30,14 +30,6 @@ public class PeerApp {
             NewProblemArgs newProblemArgs = new NewProblemArgs(problemHash, EncryptionType.SHA1, null);
             problem.GotNewProblem(null, newProblemArgs);
         }
-
-        
-        // peer.Register();
-
-        // listen for new problem args
-        // while (true) {
-        //     Thread.Sleep(1000);
-        // }
     }
 
     private bool ParseArguments(string [] args) {

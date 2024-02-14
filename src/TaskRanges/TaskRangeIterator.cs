@@ -5,20 +5,23 @@ using design_patterns.Utils;
 namespace design_patterns.TaskRanges;
 
 /// <summary>
-/// TaskRangeIterator is a class that is used to iterate through a range of numbers
-/// and reserve a chunk of numbers for a certain amount of time
+/// TaskRangeIterator is a class that is used to iterate through the collection of task ranges.
+/// It is used to find a range that is available.
 /// </summary>
 public abstract class TaskRangeIterator
 {
     public TaskRangeCollection TaskRangeCollection { get; set; }
 
+    /// <summary>
+    /// GetNext returns the next available range.
+    /// </summary>
+    /// <returns></returns>
     public abstract TaskRange GetNext();
 }
 
 
 /// <summary>
-/// TaskRangeIterator is a class that is used to iterate through a range of numbers
-/// and reserve a chunk of numbers for a certain amount of time
+/// Implements an iterator that iterates through the available ranges in a random order.
 /// </summary>
 public class RandomTaskRangeIterator : TaskRangeIterator
 {
@@ -31,7 +34,7 @@ public class RandomTaskRangeIterator : TaskRangeIterator
     /// GetNext returns a random range from the available ranges
     /// </summary>
     /// <returns>
-    /// A ReservedRange object
+    /// A TaskRange object
     /// </returns>
     public override TaskRange GetNext()
     {

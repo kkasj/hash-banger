@@ -2,6 +2,9 @@ using design_patterns.Encryption;
 
 namespace design_patterns.ProblemManagement;
 
+/// <summary>
+/// Represents the arguments of a problem.
+/// </summary>
 public class ProblemArgs {
     public string ProblemHash { get; set; }
     public EncryptionType EncryptionType { get; set; }
