@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 
+namespace design_patterns.Encryption;
+
 public class EncrypterFactory
 {
     public static IEncrypter CreateEncrypter(EncryptionType encryptionType)

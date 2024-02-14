@@ -4,8 +4,8 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
-using design_patterns.Messaging.MessageArgs;
 using design_patterns.Utils;
+using design_patterns.Messaging.MessageArgs;
 
 namespace design_patterns.Messaging;
 
@@ -14,7 +14,7 @@ public class LocalPeer {
     
     // private List<NetConnection> _connections = new List<NetConnection>();
 
-    public delegate void MessageReceivedEventHandler(string message, NetConnection sender);
+    public delegate void MessageReceivedEventHandler(string message);
     public event MessageReceivedEventHandler MessageReceived;
     public delegate void NodeConnectedEventHandler(NetConnection connection);
     public event NodeConnectedEventHandler OnNewNodeConnected;
@@ -42,7 +42,7 @@ public class LocalPeer {
                 switch (msg.MessageType) {
                     case NetIncomingMessageType.Data:
                         // Console.WriteLine($"Received data from {msg.SenderConnection}.");
-                        MessageReceived?.Invoke(msg.ReadString(), msg.SenderConnection);
+                        MessageReceived?.Invoke(msg.ReadString());
                         break;
 
                     case NetIncomingMessageType.StatusChanged:

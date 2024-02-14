@@ -1,12 +1,12 @@
 ﻿public abstract class Observable {
-    private List<ISubscriber> subscribers = new();
+    public List<Subscriber> Subscribers = new();
     
-    public void Subscribe(ISubscriber subscriber) {
-        subscribers.Add(subscriber);
+    public void Subscribe(Subscriber subscriber) {
+        Subscribers.Add(subscriber);
     }
     
     public void PokeAllSubscribers() {
-        foreach (var subscriber in subscribers) {
+        foreach (Subscriber subscriber in Subscribers) {
             subscriber.Poke();
         }
     }

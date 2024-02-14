@@ -1,6 +1,11 @@
 ﻿using System;
-using design_patterns.Messaging;
 using design_patterns.Utils;
+using design_patterns.Messaging;
+using design_patterns.Messaging.MessageArgs;
+using design_patterns.ProblemManagement;
+using design_patterns.TaskRanges;
+using design_patterns.Encryption;
+using design_patterns.Tasking;
 
 public class PeerApp {
     public static void Main(string[] args) {
@@ -9,20 +14,23 @@ public class PeerApp {
         bool isProblemCreator = app.ParseArguments(args);
         Console.WriteLine("Is problem creator: " + isProblemCreator);
 
-        TaskRangeIterator iterator = new TaskRangeIterator();
-        IteratorProxy iteratorProxy = new IteratorProxy(iterator);
-        var encrypter = EncrypterFactory.CreateEncrypter(EncryptionType.SHA1); 
-        string problemHash = encrypter.Encrypt(ProblemParameters.PASSWORD);
-        Problem problem = new Problem(iteratorProxy, null);
-        TaskManager taskManager = new TaskManager(problem);
+        TaskRangeCollection taskRangeCollection = new TaskRangeCollection();
+        RandomTaskRangeIterator iterator = new RandomTaskRangeIterator(taskRangeCollection);
+        Problem problem = new Problem(iterator);
+        TaskRangeCollectionManager taskRangeCollectionManager = new TaskRangeCollectionManager(problem, taskRangeCollection);
 
-        if (isProblemCreator) {
-            NewProblemArgs newProblemArgs = new NewProblemArgs(problemHash, EncryptionType.SHA1, null);
-            problem.GotNewProblem(newProblemArgs);
-        }
+        TaskManager taskManager = new TaskManager(problem);
 
         var peer = new LocalPeer();
         var messageHandler = new MessageHandler(peer, problem);
+
+        if (isProblemCreator) {
+            var encrypter = EncrypterFactory.CreateEncrypter(EncryptionType.SHA1); 
+            string problemHash = encrypter.Encrypt(ProblemParameters.PASSWORD);
+            NewProblemArgs newProblemArgs = new NewProblemArgs(problemHash, EncryptionType.SHA1, null);
+            problem.GotNewProblem(null, newProblemArgs);
+        }
+
         
         // peer.Register();
 

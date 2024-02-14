@@ -2,114 +2,20 @@ using System;
 using System.Collections;
 using design_patterns.Utils;
 
-/// <summary>
-/// Range is a class that is used to store a range of numbers
-/// </summary>
-public class Range : IComparable<Range>
-{
-    public int Start { get; set; }
-    public int End { get; set; }
-
-    public Range(int start, int end)
-    {
-        Start = start;
-        End = end;
-    }
-
-    public int CompareTo(Range other)
-    {
-        return Start.CompareTo(other.Start);
-    }
-
-    public override bool Equals(object obj)
-    {
-        if (obj == null || GetType() != obj.GetType())
-        {
-            return false;
-        }
-
-        Range other = (Range)obj;
-        return Start == other.Start && End == other.End;
-    }
-}
-
-/// <summary>
-/// ReservedRange is a class that is used to store a range that has been reserved
-/// and the time at which it was reserved
-/// </summary>
-public class ReservedRange : Range
-{
-    public DateTime ReservedAt { get; set; }
-
-    public ReservedRange(int start, int end, DateTime reservedAt) : base(start, end)
-    {
-        ReservedAt = reservedAt;
-    }
-
-
-    public override bool Equals(object obj)
-    {
-        if (obj == null || GetType() != obj.GetType())
-        {
-            return false;
-        }
-
-        ReservedRange other = (ReservedRange)obj;
-        return Start == other.Start && End == other.End && ReservedAt == other.ReservedAt;
-    }
-} 
-
-
-/// <summary>
-/// RangeSortedList is a class that is used to store ranges and sort them by their start value
-/// </summary>
-public class RangeSortedList : SortedList<int, Range>
-{
-    public RangeSortedList() : base()
-    {
-    }
-
-    public void Add(Range range)
-    {
-        base.Add(range.Start, range);
-    }
-
-    public void Add(int start, int end)
-    {
-        Range range = new Range(start, end);
-        base.Add(start, range);
-    }
-
-    public void Remove(Range range)
-    {
-        base.Remove(range.Start);
-    }
-
-    // implement indexing
-    public Range this[int index]
-    {
-        get
-        {
-            var key = this.Keys[index];
-            return base[key];
-        }
-    }
-}
-
-
+namespace design_patterns.TaskRanges;
 
 /// <summary>
 /// TaskRangeIterator is a class that is used to iterate through a range of numbers
 /// and reserve a chunk of numbers for a certain amount of time
 /// </summary>
-public class TaskRangeIterator
+public class TaskRangeCollection
 {
     public RangeSortedList AvailableRanges { get; set; }
     public RangeSortedList ReservedRanges { get; set; }
 
-    public List<Range> SerializableAvailableRanges
+    public List<TaskRange> SerializableAvailableRanges
     {
-        get => new List<Range>(AvailableRanges.Values);
+        get => new List<TaskRange>(AvailableRanges.Values);
         set
         {
             AvailableRanges.Clear();
@@ -133,7 +39,7 @@ public class TaskRangeIterator
         }
     }
 
-    public TaskRangeIterator()
+    public TaskRangeCollection()
     {
         AvailableRanges = new RangeSortedList();
         ReservedRanges = new RangeSortedList();
@@ -162,7 +68,7 @@ public class TaskRangeIterator
         // get random available range
         Random random = new Random();
         int index = random.Next(AvailableRanges.Count);
-        Range availableRange = AvailableRanges[index];
+        TaskRange availableRange = AvailableRanges[index];
 
         // availableRange always has length of at least CHUNK_LENGTH
         DateTime reservedAt = DateTime.Now;
@@ -177,7 +83,7 @@ public class TaskRangeIterator
         int totalLength = 0;
         for (int i = 0; i < AvailableRanges.Count; i++)
         {
-            Range range = AvailableRanges[i];
+            TaskRange range = AvailableRanges[i];
             totalLength += range.End - range.Start;
         }
 
@@ -195,8 +101,8 @@ public class TaskRangeIterator
 
         for (int i = 0; i < AvailableRanges.Count - 1; i++)
         {
-            Range range1 = AvailableRanges[i];
-            Range range2 = AvailableRanges[i + 1];
+            TaskRange range1 = AvailableRanges[i];
+            TaskRange range2 = AvailableRanges[i + 1];
             if (range1.End + 1 == range2.Start)
             {
                 AvailableRanges.RemoveAt(i);
@@ -227,7 +133,7 @@ public class TaskRangeIterator
     /// <param name="range">
     /// A Range object
     /// </param>
-    public void ReserveRange(Range range)
+    public void ReserveRange(TaskRange range)
     {
         // find the available range that contains the start of this range
         // if it exists, split it into two ranges
@@ -239,7 +145,7 @@ public class TaskRangeIterator
 
         for (int i = 0; i < AvailableRanges.Count; i++)
         {
-            Range availableRange = AvailableRanges[i];
+            TaskRange availableRange = AvailableRanges[i];
             if (start >= availableRange.Start && start <= availableRange.End)
             {
                 if (start == availableRange.Start && end == availableRange.End)
@@ -308,7 +214,7 @@ public class TaskRangeIterator
     /// <summary>
     /// FreeReservedRange frees a reserved range and adds it to the available ranges
     /// </summary>
-    public void FreeReservedRange(Range range)
+    public void FreeReservedRange(TaskRange range)
     {
         // find the reserved range that contains the start of this range
         // if it exists, split it into two ranges
@@ -360,7 +266,7 @@ public class TaskRangeIterator
     /// <summary>
     /// RemoveReservedRange removes a reserved range when it was successfully processed
     /// </summary>
-    public void RemoveReservedRange(Range range)
+    public void RemoveReservedRange(TaskRange range)
     {
         // find the reserved range that contains the start of this range
         // if it exists, split it into two ranges
@@ -421,7 +327,7 @@ public class TaskRangeIterator
         Console.WriteLine("Available ranges:");
         for (int i = 0; i < AvailableRanges.Count; i++)
         {
-            Range range = AvailableRanges[i];
+            TaskRange range = AvailableRanges[i];
             Console.WriteLine("Start: " + range.Start + " End: " + range.End);
         }
 

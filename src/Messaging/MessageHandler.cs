@@ -1,77 +1,38 @@
 using Lidgren.Network;
 using System.Text.Json;
+using System.Collections.Concurrent;
 using design_patterns.Messaging.Exceptions;
 using design_patterns.Messaging.MessageArgs;
-using System.Collections.Concurrent;
+using design_patterns.Encryption;
+using design_patterns.ProblemManagement;
+using design_patterns.TaskRanges;
 
-namespace design_patterns.Messaging; 
+namespace design_patterns.Messaging;
 
-public class MessageHandler : RangeUpdater, ISubscriber {
+public class MessageHandler : Subscriber {
     private readonly LocalPeer _localPeer;
-    private Problem _problem;
-    private ProblemArgs? _lastProblemArgs = null;
-    private bool _receivedResult = false;
-    private bool _sentResult = false;
+
     public MessageHandler(LocalPeer localPeer, Problem problem) {
-        _problem = problem;
+        this.problem = problem;
+        visitor = new MessageHandlerProblemUpdateVisitor(this);
         problem.Subscribe(this);
         _localPeer = localPeer;
         _localPeer.MessageReceived += HandleMessage;
         _localPeer.OnNewNodeConnected += (connection) => {
             // if the problem is not yet set, it means this is the new peer
-            if (_problem.Args is null) {
+            if (this.problem.Args is null) {
                 return;
             }
-            SendProblemToNode(connection);
+            // if the problem is done, we don't need to send it
+            if (this.problem.Args.IsDone) {
+                return;
+            }
+            SendProblemToNewNode(connection);
             Console.WriteLine("New node connected - sent problem.");
         };
-        Source = UpdateSource.Sync;
     }
 
-    public void Poke() {
-        if (_problem.Args is not null && _problem.Args.IsDone) {
-            if (!_receivedResult && !_sentResult) {
-                _sentResult = true;
-                var endMessage = new Message(MessageType.ProblemSolved, _problem.Args.Result);
-                _localPeer.BroadcastMessage(endMessage);
-            }
-            return;
-        }
-
-        // the problem changed - send the updated problem to other peers
-        // if (_lastProblemArgs != _problem.Args) {
-        //     BroadcastNewProblem();
-        //     _lastProblemArgs = _problem.Args;
-        //     return;
-        // }
-        
-        var rangeUpdates = _problem.IteratorProxy.Updates;
-
-        // take updates whose source is Local
-        var localUpdates = rangeUpdates.Where(update => update.UpdateSource == UpdateSource.Local);
-        
-        // send range updates to other peers
-        foreach (var update in localUpdates) {
-            switch (update.UpdateType) {
-                case UpdateType.RangeDone:
-                    var messageRangeDone = new Message(MessageType.RangeCompleted, JsonSerializer.Serialize(update.Range));
-                    _localPeer.BroadcastMessage(messageRangeDone);
-                    break;
-                case UpdateType.RangeReservation:
-                    var messageRangeReservation = new Message(MessageType.RangeReserved, JsonSerializer.Serialize((ReservedRange)update.Range));
-                    _localPeer.BroadcastMessage(messageRangeReservation);
-                    break;
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        // delete them from the original concurrent bag
-        if (localUpdates.Count() > 0){
-            _problem.IteratorProxy.Updates = new ConcurrentBag<RangeUpdate>(rangeUpdates.Except(localUpdates));
-        }
-    }
-    private void HandleMessage(string newMessage, NetConnection sender) {
+    private void HandleMessage(string newMessage) {
         Message msg = Deserialize(newMessage);
         // Console.WriteLine("Received message: " + msg.Type);
         switch (msg.Type) {
@@ -79,55 +40,67 @@ public class MessageHandler : RangeUpdater, ISubscriber {
                 Console.WriteLine("Hello received");
                 break;
             case MessageType.NewNodeConnected:
-                _localPeer.NodeConnected(JsonSerializer.Deserialize<NewNodeConnectedArgs>(msg.Content));
+                _localPeer.NodeConnected(JsonSerializer.Deserialize<NewNodeConnectedArgs>(msg.Content) ?? throw new MessageBadFormatException("NewNodeConnected message contains null newNodeConnectedArgs"));
                 break;
             case MessageType.NodeDisconnected:
-                _localPeer.NodeDisconnected(JsonSerializer.Deserialize<NodeDisconnectedArgs>(msg.Content));
+                _localPeer.NodeDisconnected(JsonSerializer.Deserialize<NodeDisconnectedArgs>(msg.Content) ?? throw new MessageBadFormatException("NodeDisconnected message contains null nodeDisconnectedArgs"));
                 break;
             case MessageType.NodesReceived:
-                _localPeer.NodesReceived(JsonSerializer.Deserialize<NodesReceivedArgs>(msg.Content));
+                _localPeer.NodesReceived(JsonSerializer.Deserialize<NodesReceivedArgs>(msg.Content) ?? throw new MessageBadFormatException("NodesReceived message contains null nodesReceivedArgs"));
                 break;
             case MessageType.NewProblem:
-                NewProblemArgs newProblemArgs = JsonSerializer.Deserialize<NewProblemArgs>(msg.Content);
-                _problem.GotNewProblem(newProblemArgs);
+                NewProblemArgs newProblemArgs = JsonSerializer.Deserialize<NewProblemArgs>(msg.Content) ?? throw new MessageBadFormatException("NewProblem message contains null newProblemArgs");
+                problem.GotNewProblem(this, newProblemArgs);
 
                 Console.WriteLine("New problem received - ", newProblemArgs.ProblemHash);
-
                 break;
             case MessageType.CancelProblem:
                 throw new NotImplementedException();
             case MessageType.ProblemSolved:
-                _receivedResult = true;
-                _problem.ProblemSolved(msg.Content);
+                problem.ProblemSolved(this, msg.Content);
                 break;
             case MessageType.RangeReserved:
-                ReservedRange reservedRange = JsonSerializer.Deserialize<ReservedRange>(msg.Content);
-                _problem.ReserveTask(this, reservedRange);
+                TaskRange range = JsonSerializer.Deserialize<TaskRange>(msg.Content) ?? throw new MessageBadFormatException("RangeReserved message contains null range");
+                problem.ReserveRange(this, range);
                 break;
             case MessageType.RangeCompleted:
-                Range doneRange = JsonSerializer.Deserialize<Range>(msg.Content);
-                _problem.TaskDone(this, doneRange);
+                TaskRange doneRange = JsonSerializer.Deserialize<TaskRange>(msg.Content) ?? throw new MessageBadFormatException("RangeCompleted message contains null range");
+                problem.RangeDone(this, doneRange);
                 break;
             case MessageType.ProblemDiscovery:
-                NewProblemArgs newProblemArgs2 = JsonSerializer.Deserialize<NewProblemArgs>(msg.Content);
+                NewProblemArgs newProblemArgs2 = JsonSerializer.Deserialize<NewProblemArgs>(msg.Content) ?? throw new MessageBadFormatException("ProblemDiscovery message contains null newProblemArgs");
 
                 // ProblemDiscovery is directed to new peers only
-                if (_problem.Args is null) {
-                    _problem.GotNewProblem(newProblemArgs2);
+                if (problem.Args is null) {
+                    problem.GotNewProblem(this, newProblemArgs2);
                 }
-
                 break;
         }
     }
 
+    public void BroadcastResult(string result) {
+        var endMessage = new Message(MessageType.ProblemSolved, result);
+        _localPeer.BroadcastMessage(endMessage);
+    }
+
+    public void BroadcastRangeDone(TaskRange range) {
+        var rangeDoneMessage = new Message(MessageType.RangeCompleted, JsonSerializer.Serialize(range));
+        _localPeer.BroadcastMessage(rangeDoneMessage);
+    }
+
+    public void BroadcastRangeReservation(TaskRange range) {
+        var rangeReservationMessage = new Message(MessageType.RangeReserved, JsonSerializer.Serialize(range));
+        _localPeer.BroadcastMessage(rangeReservationMessage);
+    }
+
     public void BroadcastNewProblem() {
-        var newProblemArgs = new NewProblemArgs(_problem.Args.ProblemHash, _problem.Args.EncryptionType, null);
+        var newProblemArgs = new NewProblemArgs(problem.Args.ProblemHash, problem.Args.EncryptionType, null);
         var newProblemMessage = new Message(MessageType.NewProblem, JsonSerializer.Serialize(newProblemArgs));
         _localPeer.BroadcastMessage(newProblemMessage);
     }
 
-    public void SendProblemToNode(NetConnection connection) {
-        var newProblemArgs = new NewProblemArgs(_problem.Args.ProblemHash, _problem.Args.EncryptionType, _problem.IteratorProxy.Iterator);
+    public void SendProblemToNewNode(NetConnection connection) {
+        var newProblemArgs = new NewProblemArgs(problem.Args.ProblemHash, problem.Args.EncryptionType, problem.Iterator.TaskRangeCollection);
         var newProblemMessage = new Message(MessageType.ProblemDiscovery, JsonSerializer.Serialize(newProblemArgs));
         _localPeer.SendMessage(connection, newProblemMessage);
     }

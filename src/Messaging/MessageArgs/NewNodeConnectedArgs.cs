@@ -1,4 +1,4 @@
-﻿namespace design_patterns.Messaging.MessageArgs; 
+﻿namespace design_patterns.Messaging.MessageArgs;
 
 public class NewNodeConnectedArgs {
     public string Socket { get; private set; }

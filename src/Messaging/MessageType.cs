@@ -1,4 +1,4 @@
-namespace design_patterns.Messaging; 
+namespace design_patterns.Messaging;
 
 public enum MessageType {
     // Server Messages
