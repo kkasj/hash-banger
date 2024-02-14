@@ -319,7 +319,7 @@ classDiagram
 
     MessageHandler <|-- Subscriber
     TaskManager <|-- Subscriber
-    TaskRangeCollctionManager <|-- Subscriber
+    TaskRangeCollectionManager <|-- Subscriber
 
     Subscriber --> Problem
     Subscriber --> ProblemUpdateVisitor
